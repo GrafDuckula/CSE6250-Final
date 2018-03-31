@@ -10,6 +10,7 @@ import edu.gatech.cse8803.clustering.{Metrics, NMF}
 import edu.gatech.cse8803.features.FeatureConstruction
 import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.model._
+import edu.gatech.cse8803.statistics.statistics.printStatistics
 import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.clustering.{GaussianMixture, KMeans, StreamingKMeans}
 import org.apache.spark.mllib.linalg.{DenseMatrix, Matrices, Vector, Vectors}
@@ -33,40 +34,61 @@ object Main {
     val sqlContext = new SQLContext(sc)
 
     /** initialize loading of data */
-    val (socEcoRDD, scDemogrRDD, bioChemRDD, datScanRDD, upsitRDD, remRDD, moCARDD, updrsIRDD,updrsIIRDD, patientsWithLabel) = loadRddRawData(sqlContext)
+    val (socEcoRDD, scDemogrRDD, famHistRDD, bioChemRDD, datScanRDD,
+    quipRDD, hvltRDD, bLineRDD, semaFlutRDD, lnSeqRDD, sdModRDD, essRDD, staiRDD, gdsRDD, scopaRDD,
+    upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, updrsIIIRDD, patientsWithLabel) = loadRddRawData(sqlContext)
+
+    /** calculate and print statistics*/
+    printStatistics(socEcoRDD, scDemogrRDD, bioChemRDD, datScanRDD, quipRDD, upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, patientsWithLabel)
 
     /** conduct phenotyping */
     val phenotypeLabel = patientsWithLabel
 
 
-
     /** feature construction with all features except UPDRS */
- /*   val featureTuples = sc.union(
+    val featureTuplesWithoutUPDRS = sc.union(
       FeatureConstruction.constructSocEcoFeatureTuple(socEcoRDD),
       FeatureConstruction.constructScDemogrFeatureTuple(scDemogrRDD),
+      FeatureConstruction.constructFamHistFeatureTuple(famHistRDD), // New
       FeatureConstruction.constructBioChemRDDFeatureTuple(bioChemRDD),
       FeatureConstruction.constructDatScanRDDFeatureTuple(datScanRDD),
+
+      FeatureConstruction.constructQuipRDDFeatureTuple(quipRDD), //new
+      FeatureConstruction.constructHvltRDDFeatureTuple(hvltRDD), //new
+      FeatureConstruction.constructBLineRDDFeatureTuple(bLineRDD), //new
+      FeatureConstruction.constructSemaFlutRDDFeatureTuple(semaFlutRDD), //new
+      FeatureConstruction.constructLnSeqRDDFeatureTuple(lnSeqRDD), //new
+      FeatureConstruction.constructSdModRDDFeatureTuple(sdModRDD), //new
+      FeatureConstruction.constructEssRDDFeatureTuple(essRDD), //new
+      FeatureConstruction.constructStaiRDDFeatureTuple(staiRDD), //new
+      FeatureConstruction.constructGdsRDDFeatureTuple(gdsRDD), //new
+      FeatureConstruction.constructScopaRDDFeatureTuple(scopaRDD), //new
+
       FeatureConstruction.constructUpsitRDDFeatureTuple(upsitRDD),
       FeatureConstruction.constructRemRDDFeatureTuple(remRDD),
       FeatureConstruction.constructMoCARDDFeatureTuple(moCARDD)
-    )*/
-
-    /** feature construction with all features */
-    val featureTuples = sc.union(
-      FeatureConstruction.constructSocEcoFeatureTuple(socEcoRDD),
-      FeatureConstruction.constructScDemogrFeatureTuple(scDemogrRDD),
-      FeatureConstruction.constructBioChemRDDFeatureTuple(bioChemRDD),
-      FeatureConstruction.constructDatScanRDDFeatureTuple(datScanRDD),
-      FeatureConstruction.constructUpsitRDDFeatureTuple(upsitRDD),
-      FeatureConstruction.constructRemRDDFeatureTuple(remRDD),
-      FeatureConstruction.constructMoCARDDFeatureTuple(moCARDD),
-      FeatureConstruction.constructUpdrsIRDDFeatureTuple(updrsIRDD),
-      FeatureConstruction.constructUpdrsIIRDDFeatureTuple(updrsIIRDD)
     )
 
-    val rawFeatures = FeatureConstruction.construct(sc, featureTuples, phenotypeLabel)
+    /** feature construction with all features */
+    val featureTuplesWithUPDRS = sc.union(
+      featureTuplesWithoutUPDRS,
+      FeatureConstruction.constructUpdrsIRDDFeatureTuple(updrsIRDD),
+      FeatureConstruction.constructUpdrsIIRDDFeatureTuple(updrsIIRDD),
+      FeatureConstruction.constructUpdrsIIIRDDFeatureTuple(updrsIIIRDD) // New
+    )
 
-    val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeatures)
+    val rawFeaturesWithUPDRS = FeatureConstruction.construct(sc, featureTuplesWithUPDRS, phenotypeLabel)
+    val rawFeaturesWithoutUPDRS = FeatureConstruction.construct(sc, featureTuplesWithoutUPDRS, phenotypeLabel)
+
+
+    FeatureConstruction.saveFeatures(sc, featureTuplesWithUPDRS, phenotypeLabel, 1) // withUPDRS == 1
+    FeatureConstruction.saveFeatures(sc, featureTuplesWithoutUPDRS, phenotypeLabel, 0)  // withoutUPDRS == 0
+
+
+    // val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeaturesWithoutUPDRS)
+    val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeaturesWithUPDRS)
+
+
     println(f"[All feature] purity of kMeans is: $kMeansPurity%.5f")
     println(f"[All feature] purity of GMM is: $gaussianMixturePurity%.5f")
     println(f"[All feature] purity of StreamingKMeans is: $streamKmeansPurity%.5f")
@@ -120,20 +142,6 @@ object Main {
     val SKMpredictionAndLabel = SKMpredWithPatientIds.join(phenotypeLabel).map({case (patientID,value)=>value})
     val streamKmeansPurity = Metrics.purity(SKMpredictionAndLabel)
 
-    /** NMF */
-/*    val rawFeaturesNonnegative = rawFeatures.map({ case (patientID, f)=> Vectors.dense(f.toArray.map(v=>Math.abs(v)))})
-    val (w, _) = NMF.run(new RowMatrix(rawFeaturesNonnegative), 4, 100)
-    // for each row (patient) in W matrix, the index with the max value should be assigned as its cluster type
-    val assignments = w.rows.map(_.toArray.zipWithIndex.maxBy(_._1)._2)
-    // zip patientIDs with their corresponding cluster assignments
-    // Note that map doesn't change the order of rows
-    val assignmentsWithPatientIds=features.map({case (patientId,f)=>patientId}).zip(assignments) 
-    // join your cluster assignments and phenotypeLabel on the patientID and obtain a RDD[(Int,Int)]
-    // which is a RDD of (clusterNumber, phenotypeLabel) pairs 
-    val nmfClusterAssignmentAndLabel = assignmentsWithPatientIds.join(phenotypeLabel).map({case (patientID,value)=>value})
-    // Obtain purity value
-    val nmfPurity = Metrics.purity(nmfClusterAssignmentAndLabel)*/
-
 
 /*    val kMeansPurity = 0.0
     val gaussianMixturePurity = 0.0
@@ -144,7 +152,9 @@ object Main {
   }
 
 
-  def loadRddRawData(sqlContext: SQLContext): (RDD[EDU], RDD[DEMOGR], RDD[BIOCHEM], RDD[DATSCAN], RDD[UPSIT], RDD[REM], RDD[MOCA], RDD[UPDRS], RDD[UPDRS], RDD[(String, Int)]) = {
+  def loadRddRawData(sqlContext: SQLContext): (RDD[EDU], RDD[DEMOGR], RDD[HIST], RDD[BIOCHEM], RDD[DATSCAN],
+    RDD[QUIP], RDD[HVLT], RDD[BLINE], RDD[SFT],RDD[LNSEQ], RDD[SDMOD],RDD[ESS], RDD[STAI],RDD[GDS], RDD[SCOPA],
+    RDD[UPSIT], RDD[REM], RDD[MOCA], RDD[UPDRS], RDD[UPDRS], RDD[UPDRS], RDD[(String, Int)]) = {
     /** load data using Spark SQL into RDDs and return them
       *       Ignore lab results with missing (empty or NaN) values when these are read in.
       * */
@@ -160,248 +170,335 @@ object Main {
       else (s(0).toString, 1) //PD
     )
 
+
+    /**_Subject_Characteristics*/
+
+    /**Socio-Economics*/
     val socEco = CSVUtils.loadCSVAsTable(sqlContext,"data/Socio-Economics.csv").
       toDF().select("PATNO","EDUCYRS").cache() //Event ID & F_status
+    val socEcoRDD = socEco.filter(socEco("EDUCYRS")!=="").map(s=>EDU(s(0).toString, s(1).toString.toInt)).filter(s=>allPatientsID.contains(s.patientID))
 
+    /**Demographics*/
     val scDemogr = CSVUtils.loadCSVAsTable(sqlContext,"data/Screening___Demographics.csv").
       toDF().select("PATNO","APPRDX","BIRTHDT","GENDER","PRJENRDT","DECLINED","EXCLUDED") // "PRJENRDT" is "projected enrollment date"
     val scDemogrEnrolled = scDemogr.filter(!(scDemogr("EXCLUDED") === "1" || scDemogr("DECLINED") === "1")).cache()
 
-    val bioChem = CSVUtils.loadCSVAsTable(sqlContext,"data/Biospecimen_Analysis_Results.csv").
-      toDF().select("PATNO","GENDER","DIAGNOSIS","CLINICAL_EVENT","TYPE","TESTNAME","TESTVALUE").cache() //DNA RNA biochemical
-    val bioChemFilterd = bioChem.filter((bioChem("TESTVALUE") !== "") and bioChem("TESTVALUE").isNotNull and (bioChem("TESTVALUE")!== "Undetermined") and (bioChem("TESTVALUE") !== "N/A") and (bioChem("TESTVALUE") !== "NA"))
-
-    val datScan = CSVUtils.loadCSVAsTable(sqlContext,"data/DATScan_Analysis.csv").
-      toDF().select("PATNO","EVENT_ID","CAUDATE_R","CAUDATE_L","PUTAMEN_R","PUTAMEN_L").cache().
-      map(s=>(s(0).toString, s(1).toString, List(s(2), s(3)).map(_.toString).map(_.toDouble).sum, List(s(4), s(5)).map(_.toString).map(_.toDouble).sum))
-
-    val upsit0 = CSVUtils.loadCSVAsTable(sqlContext,"data/University_of_Pennsylvania_Smell_ID_Test.csv").
-      toDF().select("PATNO","EVENT_ID","UPSITBK1","UPSITBK2","UPSITBK3","UPSITBK4")
-    val upsit = upsit0.filter(!(upsit0("UPSITBK1")===""||upsit0("UPSITBK2")===""||upsit0("UPSITBK3")===""||upsit0("UPSITBK4")==="")).cache().
-      map(s=>(s(0).toString, s(1).toString, List(s(2), s(3), s(4), s(5)).
-      map(_.toString).map(_.toDouble).sum))
-
-
-    val rem0 = CSVUtils.loadCSVAsTable(sqlContext,"data/REM_Sleep_Disorder_Questionnaire.csv").
-      toDF().cache()
-    //val remFeatures = rem0.columns.slice(7,28)
-    val rem = rem0.rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13), s(14), s(15), s(16), s(17), s(18), s(19), s(20), s(21), s(22), s(23), s(24), s(25), s(26), s(27), s(27)).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
-
-    val moCA = CSVUtils.loadCSVAsTable(sqlContext,"data/Montreal_Cognitive_Assessment__MoCA_.csv").
-      toDF().select("PATNO","EVENT_ID","MCATOT").cache()
-
-
-    val updrsI10 = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_I__Patient_Questionnaire.csv").
-      toDF().cache()
-    val updrsI1 = rem0.rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13)).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
-
-    val updrsI20 = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_I.csv").
-      toDF().cache()
-    val updrsI2 = rem0.rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12)).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
-
-    val updrsI = updrsI1.join(updrsI2).map(s=>(s._1, s._2._1+s._2._2))
-
-    val updrsII0 = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_II__Patient_Questionnaire.csv").
-      toDF().cache()
-    val updrsII = rem0.rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13), s(14), s(15), s(16), s(17), s(18), s(19)).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
-
-
-    val dateFormat01 = new SimpleDateFormat("MM/yyyy")
+    val dateFormat01 = new SimpleDateFormat("MM/yy")
     val dateFormat02 = new SimpleDateFormat("yyyy")
-    val bioChemFeatures = Source.fromFile("data/All_for_filter.txt").getLines().map(_.toLowerCase).toSet[String]
 
-    //to RDD format
-    val socEcoRDD = socEco.filter(socEco("EDUCYRS")!=="").map(s=>EDU(s(0).toString, s(1).toString.toInt)).filter(s=>allPatientsID.contains(s.patientID))
     val scDemogrEnrolledRDD = scDemogrEnrolled.filter(!(scDemogrEnrolled("BIRTHDT") === "" || scDemogrEnrolled("PRJENRDT")==="")).
-      map(s=>DEMOGR(s(0).toString,s(3).toString, (dateFormat01.parse(s(4).asInstanceOf[String]).getTime - dateFormat02.parse(s(2).asInstanceOf[String]).getTime)/1000/60/60/24/365.0)).
+      map(s=>DEMOGR(s(0).toString,s(3).toString, (dateFormat01.parse(s(4).asInstanceOf[String]).getTime - dateFormat02.parse(s(2).asInstanceOf[String]).getTime)/1000/60/60/24/365.25)).
       filter(s=>allPatientsID.contains(s.patientID)).filter(s=>s.age>0)
 
+    /**Family History*/
+    val famHist = CSVUtils.loadCSVAsTable(sqlContext,"data/Family_History__PD_.csv").
+      toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString,
+      List(s(6), s(8), s(10), s(12), s(14), s(16), s(18), s(20), s(22)).map(_.toString()).map{ case "" => "0"; case x => x}, // all relatives
+      List(s(7), s(9), s(11), s(13), s(15), s(17), s(19), s(21), s(23)).map(_.toString()).map{ case "" => "0"; case x => x})). // with PDs
+      map(s=>(s._1, s._2, s._3.map(_.toInt).sum, s._4.map(_.toDouble).sum)).
+      filter(s=> s._3 != 0).
+      map(s=>(s._1, s._2, s._4/s._3))
+
+    val famHistRDD = famHist.map(s=>HIST(s._1,s._2,s._3)).
+      filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="SC")
+
+
+    /**_Biospecimen*/
+
+    val bioChem = CSVUtils.loadCSVAsTable(sqlContext,"data/Biospecimen_Analysis_Results.csv").
+      toDF().select("PATNO","GENDER","DIAGNOSIS","CLINICAL_EVENT","TYPE","TESTNAME","TESTVALUE").cache() //DNA RNA biochemical
+    val bioChemFilterd = bioChem.filter((bioChem("TESTVALUE") !== "") and bioChem("TESTVALUE").isNotNull
+      and (bioChem("TESTVALUE")!== "Undetermined") and (bioChem("TESTVALUE") !== "N/A") and (bioChem("TESTVALUE") !== "NA"))
+
+    val bioChemFeatures = Source.fromFile("data/All_for_filter.txt").getLines().map(_.toLowerCase).toSet[String]
     val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString,s(5).toString.toLowerCase(),s(6))).
       filter(s=>bioChemFeatures.contains(s.testName)).
       filter(s=>s.eventID=="BL"||s.eventID=="SC").
       filter(s=>allPatientsID.contains(s.patientID))
 
-    val datScanRDD = datScan.map(s=>DATSCAN(s._1,s._2,s._3,s._4)).filter(s=>allPatientsID.contains(s.patientID))
+
+
+    /**Imaging*/
+
+    /**DATScan_Analysis*/
+    val datScan = CSVUtils.loadCSVAsTable(sqlContext,"data/DATScan_Analysis.csv").
+      toDF().select("PATNO","EVENT_ID","CAUDATE_R","CAUDATE_L","PUTAMEN_R","PUTAMEN_L").cache().
+      map{s=>
+        val caudate = List(s(2), s(3)).map(_.toString.toDouble).sum
+        val putamen = List(s(4), s(5)).map(_.toString.toDouble).sum
+        val caudateAsym = 100*(s(2).toString.toDouble - s(3).toString.toDouble)/caudate
+        val putamenAsym = 100*(s(4).toString.toDouble - s(5).toString.toDouble)/putamen
+        (s(0).toString, s(1).toString, caudate, putamen, caudate/putamen, caudateAsym, putamenAsym)}
+
+    val datScanRDD = datScan.map(s=>DATSCAN(s._1,s._2,s._3,s._4,s._5,s._6,s._7)).filter(s=>allPatientsID.contains(s.patientID)).filter(s=>s.eventID=="SC")
+    /*    val datScan = CSVUtils.loadCSVAsTable(sqlContext,"data/DATScan_Analysis.csv").
+          toDF().select("PATNO","EVENT_ID","CAUDATE_R","CAUDATE_L","PUTAMEN_R","PUTAMEN_L").cache().
+          map(s=>(s(0).toString, s(1).toString, List(s(2), s(3)).map(_.toString).map(_.toDouble).sum, List(s(4), s(5)).map(_.toString).map(_.toDouble).sum))*/
+
+
+
+    /**Non-motor_Assessments*/
+
+    /**Questionnaire for Impulsive-Compulsive Disorders in Parkinson’s Disease*/
+    val quip = CSVUtils.loadCSVAsTable(sqlContext,"data/QUIP_Current_Short.csv").
+      toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString,
+      List(s(7), s(8)).map(_.toString),
+      List(s(9), s(10)).map(_.toString),
+      List(s(11), s(12)).map(_.toString),
+      List(s(13), s(14)).map(_.toString),
+      List(s(15), s(16), s(17)).map(_.toString))).
+      filter(s=> ! (s._3.contains("") || s._4.contains("") || s._5.contains("") || s._6.contains("") || s._7.contains(""))).
+      map(s=> (s._1, s._2,
+        if (s._3.map(_.toInt).sum>0) 1 else 0,
+        if (s._4.map(_.toInt).sum>0) 1 else 0,
+        if (s._5.map(_.toInt).sum>0) 1 else 0,
+        if (s._6.map(_.toInt).sum>0) 1 else 0,
+        s._7.map(_.toInt).sum)).
+      map(s=> (s._1, s._2, s._3 + s._4 + s._5 + s._6 + s._7))
+
+    val quipRDD = quip.map(s=>QUIP(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID))
+
+
+    /*Hopkins_Verbal_Learning_Test*/
+    val hvlt = CSVUtils.loadCSVAsTable(sqlContext,"data/Hopkins_Verbal_Learning_Test.csv").
+      toDF().select("PATNO", "EVENT_ID", "HVLTRT1", "HVLTRT2", "HVLTRT3", "HVLTRDLY", "HVLTREC", "HVLTFPRL", "HVLTFPUN").
+      cache().rdd.filter(s=> ! List(s(2), s(3), s(4), s(5), s(6), s(7), s(8)).contains("")).
+      map(s=>(s(0).toString, s(1).toString,
+        List(s(2), s(3), s(4)).map(_.toString.toInt).sum,
+        s(6).toString.toInt - s(7).toString.toInt - s(8).toString.toInt,
+        s(5).toString.toInt/List(s(3), s(4)).map(_.toString.toInt).max))
+
+    val hvltRDD = hvlt.map(s=>HVLT(s._1,s._2,s._3,s._4, s._5)).
+      filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /*Benton_Judgment_of_Line_Orientation
+    * Sum of BJLOT1 - BJLOT30*/
+
+    val bLine = CSVUtils.loadCSVAsTable(sqlContext,"data/Benton_Judgment_of_Line_Orientation.csv").
+      toDF().select("PATNO", "EVENT_ID","DVS_JLO_MSSAE").cache().rdd. // Derived-MOANS (Age and Education)
+      map(s=>(s(0).toString, s(1).toString, s(2).toString)).filter(s=> !(s._3==""))
+
+    val bLineRDD = bLine.map(s=>BLINE(s._1, s._2, s._3.toDouble)).
+      filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /**Semantic_Fluency*/
+    val semaFlut = CSVUtils.loadCSVAsTable(sqlContext,"data/Semantic_Fluency.csv").
+      toDF().select("PATNO", "EVENT_ID", "VLTANIM", "VLTVEG", "VLTFRUIT", "DVS_SFTANIM", "DVT_SFTANIM").cache().rdd.
+      filter(s=> ! List(s(2), s(3), s(4), s(5), s(6)).contains("")).
+      map(s=>(s(0).toString, s(1).toString, List(s(2), s(3), s(4)).map(_.toString.toInt).sum, s(5).toString.toInt, s(6).toString.toInt))
+
+    val semaFlutRDD = semaFlut.map(s=>SFT(s._1, s._2, s._3, s._4, s._5)).
+      filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /** Letter Number Sequencing */
+    val lnSeq = CSVUtils.loadCSVAsTable(sqlContext,"data/Letter_-_Number_Sequencing__PD_.csv").
+      toDF().select("PATNO", "EVENT_ID","LNS_TOTRAW", "DVS_LNS").cache().rdd.
+      filter(s=> ! List(s(2), s(3)).contains("")).
+      map(s=>(s(0).toString, s(1).toString, s(2).toString.toInt, s(3).toString.toInt))
+
+    val lnSeqRDD = lnSeq.map(s=>LNSEQ(s._1, s._2, s._3, s._4)).
+      filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /** Symbol_Digit_Modalities */
+    val sdMod = CSVUtils.loadCSVAsTable(sqlContext,"data/Symbol_Digit_Modalities.csv").
+      toDF().select("PATNO", "EVENT_ID","SDMTOTAL", "DVT_SDM").cache().rdd.
+      filter(s=> ! List(s(2), s(3)).contains("")).
+      map(s=>(s(0).toString, s(1).toString, s(2).toString.toInt, s(3).toString.toDouble))
+
+    val sdModRDD = sdMod.map(s=>SDMOD(s._1, s._2, s._3, s._4)).
+      filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /** Epworth_Sleepiness_Scale
+      * Sum of ESS1 - ESS8.
+      * Subjects with ESS <10 are "Not Sleepy".
+      * Subjects with ESS >=10 are "Sleepy".*/
+
+    val ess = CSVUtils.loadCSVAsTable(sqlContext,"data/Epworth_Sleepiness_Scale.csv").
+      toDF().cache().rdd.
+      map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13), s(14)).map(_.toString()))).
+      filter(s=> ! s._3.contains("")).
+      map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
+
+    val essRDD = ess.map(s=>ESS(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /** State-Trait_Anxiety_Inventory
+      *
+      * STAI - State Subscore
+      * STAIAD1 - STAIAD20.  Add values for the following questions:  3, 4, 6, 7, 9, 12, 13, 14, 17, 18.
+      * Use reverse scoring for the values of the remaining questions through question 20 and add to the first value.
+      *
+      * STAI - Trait Subscore
+      * STAIAD21 - STAIAD40.  Add values for the following questions:  22, 24, 25, 28, 29, 31, 32, 35, 37, 38, 40.
+      * Use reverse scoring for the values of the remaining questions and add to the first value.*/
+
+    val stai = CSVUtils.loadCSVAsTable(sqlContext,"data/State-Trait_Anxiety_Inventory.csv").
+      toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString,
+      List(s(8), s(9), s(11), s(12), s(14), s(17), s(18), s(19), s(22), s(23)).map(_.toString()),
+      List(s(6), s(7), s(10), s(13), s(15), s(16), s(20), s(21), s(24), s(25)).map(_.toString()),
+      List(s(27), s(29), s(30), s(33), s(34), s(36), s(37), s(40), s(42), s(43), s(45)).map(_.toString()),
+      List(s(26), s(28), s(31), s(32), s(35), s(38), s(39), s(41), s(44)).map(_.toString()))).
+      filter(s=> ! (s._3.contains("")||s._4.contains("")||s._5.contains("")||s._6.contains(""))).
+      map(s=>(s._1, s._2,
+        s._3.map(_.toInt).sum + s._4.length*5 - s._4.map(_.toInt).sum,
+        s._5.map(_.toInt).sum + s._6.length*5 - s._6.map(_.toInt).sum))
+
+    val staiRDD = stai.map(s=>STAI(s._1,s._2,s._3+s._4, s._3, s._4)).filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /** Geriatric Depression Scale (GDS)
+      * Add 1 point for each response of "No" (0) to any of the following variables:
+      * GDSSATIS, GDSGSPIR, GDSHAPPY, GDSALIVE, GDSENRGY.
+      * Add 1 point for each response of "Yes" (1) to any of the following variables:
+      * GDSDROPD, GDSEMPTY, GDSBORED, GDSAFRAD, GDSHLPLS, GDSHOME, GDSMEMRY, GDSWRTLS, GDSHOPLS, GDSBETER. */
+
+    val gds = CSVUtils.loadCSVAsTable(sqlContext,"data/Geriatric_Depression_Scale__Short_.csv").
+      toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString,
+      List(s(7), s(8), s(9), s(11), s(13), s(14), s(15), s(17), s(19), s(20)).map(_.toString()),
+      List(s(6), s(10),s(12), s(16), s(18)).map(_.toString()))).
+      filter(s=> ! (s._3.contains("")||s._4.contains(""))).
+      map(s=>(s._1, s._2,
+        s._3.map(_.toInt).sum,
+        s._4.length - s._4.map(_.toInt).sum))
+
+    val gdsRDD = gds.map(s=>GDS(s._1,s._2, s._3 + s._4)).filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+    /** SCOPA-AUT Total Score
+      * Scales for Outcomes in Parkinson's disease – Autonomic
+      * SCAU1 - SCAU25.
+      * For questions 1-21 (SCAU1 - SCAU21), add 3 points for each response of "9". Otherwise, add the number of points in response.
+      * For questions 22-25 (SCAU22 - SCAU25), add 0 points for each response of "9". Otherwise, add the number of points in response.
+      *
+      * Gastrointestinal – questions # 1-7
+        Urinary questions #8-13 (if they use a catheter, they get the highest score)
+        Cardiovascular -questions # 14-16
+        Thermoregulatory - questions # 17-18, 20-21
+        Pupillomotor - question #19
+        Sexual - questions #22-23 if male or - questions # 24-25 if female
+        (Questions #23a and #26 do not contribute to the score)*/
+
+    val scopa = CSVUtils.loadCSVAsTable(sqlContext,"data/SCOPA-AUT.csv").
+      toDF().cache().rdd.
+      map(s=>(s(2).toString, s(3).toString,
+      List(s(7), s(8), s(9), s(10), s(11), s(12), s(13)).map(_.toString()),
+      List(s(14), s(15), s(16), s(17), s(18), s(19)).map(_.toString()).map { case "9" => "3"; case x => x },
+      List(s(20), s(21), s(22)).map(_.toString()),
+      List(s(23), s(24), s(26), s(27)).map(_.toString()),
+      s(25).toString,
+      List(s(28), s(29)).map(_.toString()).map { case "9" => "0"; case x => x },
+      List(s(32), s(33)).map(_.toString()).map { case "9" => "0"; case x => x })).
+      filter(s=> ! (s._3.contains("")||s._4.contains("")||s._5.contains("")||s._6.contains("")||s._7.contains("")||
+        (s._8.contains("") && s._9.contains("")))).
+      map(s=>(s._1, s._2,
+        s._3.map(_.toInt).sum,
+        s._4.map(_.toInt).sum,
+        s._5.map(_.toInt).sum,
+        s._6.map(_.toInt).sum,
+        s._7.toInt,
+        if (s._9.contains("")) s._8.map(_.toInt).sum else s._9.map(_.toInt).sum)).
+      map(s=>(s._1, s._2, List(s._3, s._4, s._5, s._6, s._7, s._8).sum))
+
+    val scopaRDD = scopa.map(s=>SCOPA(s._1, s._2, s._3)).filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL")
+
+
+/*    val upsit0 = CSVUtils.loadCSVAsTable(sqlContext,"data/University_of_Pennsylvania_Smell_ID_Test.csv").
+      toDF().select("PATNO","EVENT_ID","UPSITBK1","UPSITBK2","UPSITBK3","UPSITBK4")
+    val upsit = upsit0.filter(!(upsit0("UPSITBK1")===""||upsit0("UPSITBK2")===""||upsit0("UPSITBK3")===""||upsit0("UPSITBK4")==="")).cache().
+      map(s=>(s(0).toString, s(1).toString, List(s(2), s(3), s(4), s(5)).
+      map(_.toString).map(_.toInt).sum))*/
+
+
+    /**University_of_Pennsylvania_Smell_ID_Test*/
+    val upsit = CSVUtils.loadCSVAsTable(sqlContext,"data/University_of_Pennsylvania_Smell_ID_Test.csv").
+      toDF().select("PATNO","EVENT_ID","UPSITBK1","UPSITBK2","UPSITBK3","UPSITBK4").cache().rdd.
+      map(s=>(s(0).toString, s(1).toString, List(s(2), s(3), s(4), s(5)).map(_.toString))).
+      filter(s=> ! s._3.contains("")).
+      map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
+
     val upsitRDD = upsit.map(s=>UPSIT(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID))
-    val remRDD = rem.map(s=>REM(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID)).filter(s=>s.eventID=="BL"||s.eventID=="SC")
+
+
+    /*REM_Sleep_Disorder*/
+    val rem = CSVUtils.loadCSVAsTable(sqlContext,"data/REM_Sleep_Disorder_Questionnaire.csv").
+      toDF().cache().rdd.
+      map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13), s(14), s(15), s(16),
+        s(17), s(18), s(19), s(20), s(21), s(22), s(23), s(24), s(25), s(26), s(27), s(27)).map(_.toString()))).
+      filter(s=> ! s._3.contains("")).
+      map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
+
+    val remRDD = rem.map(s=>REM(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID)).
+      filter(s=>s.eventID=="BL"||s.eventID=="SC")
+
+
+    /*Montreal_Cognitive_Assessment*/
+    val moCA = CSVUtils.loadCSVAsTable(sqlContext,"data/Montreal_Cognitive_Assessment__MoCA_.csv").
+      toDF().select("PATNO","EVENT_ID","MCATOT").cache()
 
     val moCARDD = moCA.filter(moCA("MCATOT")!== "").map(s=>MOCA(s(0).toString,s(1).toString, s(2).toString.toInt)).
       filter(s=>s.eventID=="BL"||s.eventID=="SC").
       filter(s=>allPatientsID.contains(s.patientID))
 
+
+
+
+    /**Motor_Assessments*/
+
+    val updrsI1 = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_I__Patient_Questionnaire.csv").
+      toDF().rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13)).map(_.toString))).
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+
+    val updrsI2 = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_I.csv").
+      toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12)).map(_.toString))).
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+
+    val updrsI = updrsI1.join(updrsI2).map(s=>(s._1, s._2._1+s._2._2))
+
+    val updrsII = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_II__Patient_Questionnaire.csv").
+      toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13), s(14), s(15), s(16), s(17), s(18), s(19)).map(_.toString))).
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+
+    val updrsIII = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_III__Post_Dose_.csv").
+      toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString, List(s(8), s(9), s(10),
+      s(11), s(12), s(13), s(14), s(15), s(16), s(17), s(18), s(19), s(20),
+      s(21), s(22), s(23), s(24), s(25), s(26), s(27), s(28), s(29), s(30),
+      s(31), s(32), s(33), s(34), s(35), s(36), s(37), s(38), s(39), s(40)
+    ).map(_.toString))).
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+
     val updrsIRDD = updrsI.map(s=>UPDRS(s._1,s._2)).filter(s=>allPatientsID.contains(s.patientID))
     val updrsIIRDD = updrsII.map(s=>UPDRS(s._1,s._2)).filter(s=>allPatientsID.contains(s.patientID))
+    val updrsIIIRDD = updrsIII.map(s=>UPDRS(s._1,s._2)).filter(s=>allPatientsID.contains(s.patientID))
 
 
 
 
 
-    // statistics for Proposal
+    (socEcoRDD, scDemogrEnrolledRDD, famHistRDD, bioChemRDD, datScanRDD,
+      quipRDD, hvltRDD, bLineRDD, semaFlutRDD, lnSeqRDD, sdModRDD, essRDD, staiRDD, gdsRDD, scopaRDD,
+      upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, updrsIIIRDD, patientsWithLabel)
 
-    val patientHC = patientsWithLabel.filter(s=>s._2==0).map(s=>s._1).collect()
-    val patientPD = patientsWithLabel.filter(s=>s._2==1).map(s=>s._1).collect()
-
-    println("HC, PD")
-    println(patientHC.length, patientPD.length)
-
-    // Educations
-    val socEcoRDDHC = socEcoRDD.filter(s=>patientHC.contains(s.patientID))
-    val meanEduHC = socEcoRDDHC.map(_.years).sum()/socEcoRDDHC.map(_.years).count()
-    val maxEduHC = socEcoRDDHC.map(_.years).max()
-    val minEduHC = socEcoRDDHC.map(_.years).min()
-
-    val socEcoRDDPD = socEcoRDD.filter(s=>patientPD.contains(s.patientID))
-    val meanEduPD = socEcoRDDPD.map(_.years).sum()/socEcoRDDPD.map(_.years).count()
-    val maxEduPD = socEcoRDDPD.map(_.years).max()
-    val minEduPD = socEcoRDDPD.map(_.years).min()
-
-    println("educations")
-    println(meanEduHC,maxEduHC,minEduHC)
-    println(meanEduPD,maxEduPD,minEduPD)
-
-    //Age
-    val scDemogrEnrolledRDDHC = scDemogrEnrolledRDD.filter(s=>patientHC.contains(s.patientID))
-    val meanAgeHC = scDemogrEnrolledRDDHC.map(_.age).sum()/scDemogrEnrolledRDDHC.map(_.age).count()
-    val maxAgeHC = scDemogrEnrolledRDDHC.map(_.age).max()
-    val minAgeHC = scDemogrEnrolledRDDHC.map(_.age).min()
-
-    val scDemogrEnrolledRDDPD = scDemogrEnrolledRDD.filter(s=>patientPD.contains(s.patientID))
-    val meanAgePD = scDemogrEnrolledRDDPD.map(_.age).sum()/scDemogrEnrolledRDDPD.map(_.age).count()
-    val maxAgePD = scDemogrEnrolledRDDPD.map(_.age).max()
-    val minAgePD = scDemogrEnrolledRDDPD.map(_.age).min()
-
-
-    println("ages")
-    println(meanAgeHC,maxAgeHC,minAgeHC)
-    println(meanAgePD,maxAgePD,minAgePD)
-
-    println("ERR")
-    scDemogrEnrolledRDDPD.filter(s=>s.age<0).take(100).foreach(println)
-
-    //Gender
-    val femaleHC = scDemogrEnrolledRDDHC.filter(s=>s.gender == "0" || s.gender == "1").count()
-    val maleHC = scDemogrEnrolledRDDHC.filter(s=>s.gender == "2").map(s=>1.0).count()
-
-    val femalePD = scDemogrEnrolledRDDPD.filter(s=>s.gender == "0" || s.gender == "1").count()
-    val malePD = scDemogrEnrolledRDDPD.filter(s=>s.gender == "2").count()
-
-    println("gender")
-    println(femaleHC,maleHC)
-    println(femalePD,malePD)
-
-    //upsit
-    val upsitRDDHC = upsitRDD.filter(s=>patientHC.contains(s.patientID))
-    val meanUpsitHC = upsitRDDHC.map(_.Score).sum()/upsitRDDHC.map(_.Score).count()
-    val maxUpsitHC = upsitRDDHC.map(_.Score).max()
-    val minUpsitHC = upsitRDDHC.map(_.Score).min()
-
-    val upsitRDDPD = upsitRDD.filter(s=>patientPD.contains(s.patientID))
-    val meanUpsitPD = upsitRDDPD.map(_.Score).sum()/upsitRDDPD.map(_.Score).count()
-    val maxUpsitPD = upsitRDDPD.map(_.Score).max()
-    val minUpsitPD = upsitRDDPD.map(_.Score).min()
-
-    println("upsit")
-    println(meanUpsitHC,maxUpsitHC,minUpsitHC)
-    println(meanUpsitPD,maxUpsitPD,minUpsitPD)
-
-
-    //REM
-    val remRDDHC = remRDD.filter(s=>patientHC.contains(s.patientID))
-    val meanRemHC = remRDDHC.map(_.Score).sum()/remRDDHC.map(_.Score).count()
-    val maxRemHC = remRDDHC.map(_.Score).max()
-    val minRemHC = remRDDHC.map(_.Score).min()
-
-    val remRDDPD = remRDD.filter(s=>patientPD.contains(s.patientID))
-    val meanRemPD = remRDDPD.map(_.Score).sum()/remRDDPD.map(_.Score).count()
-    val maxRemPD = remRDDPD.map(_.Score).max()
-    val minRemPD = remRDDPD.map(_.Score).min()
-
-    println("rem")
-    println(meanRemHC,maxRemHC,minRemHC)
-    println(meanRemPD,maxRemPD,minRemPD)
-
-
-    //datScan
-    val datScanRDDHC = datScanRDD.filter(s=>patientHC.contains(s.patientID))
-    val meanCAUDATEHC = datScanRDDHC.map(_.CAUDATE).sum()/datScanRDDHC.map(_.CAUDATE).count()
-    val maxCAUDATEHC = datScanRDDHC.map(_.CAUDATE).max()
-    val minCAUDATEHC = datScanRDDHC.map(_.CAUDATE).min()
-
-    val meanPUTAMENHC = datScanRDDHC.map(_.PUTAMEN).sum()/datScanRDDHC.map(_.PUTAMEN).count()
-    val maxPUTAMENHC = datScanRDDHC.map(_.PUTAMEN).max()
-    val minPUTAMENHC = datScanRDDHC.map(_.PUTAMEN).min()
-
-    val datScanRDDPD = datScanRDD.filter(s=>patientPD.contains(s.patientID))
-    val meanCAUDATEPD = datScanRDDPD.map(_.CAUDATE).sum()/datScanRDDPD.map(_.CAUDATE).count()
-    val maxCAUDATEPD = datScanRDDPD.map(_.CAUDATE).max()
-    val minCAUDATEPD = datScanRDDPD.map(_.CAUDATE).min()
-
-    val meanPUTAMENPD = datScanRDDPD.map(_.PUTAMEN).sum()/datScanRDDPD.map(_.PUTAMEN).count()
-    val maxPUTAMENPD = datScanRDDPD.map(_.PUTAMEN).max()
-    val minPUTAMENPD = datScanRDDPD.map(_.PUTAMEN).min()
-
-    println("datScan CAUDATE")
-    println(meanCAUDATEHC,maxCAUDATEHC,minCAUDATEHC)
-    println(meanCAUDATEPD,maxCAUDATEPD,minCAUDATEPD)
-
-    println("datScan PUTAMEN")
-    println(meanPUTAMENHC,maxPUTAMENHC,minPUTAMENHC)
-    println(meanPUTAMENPD,maxPUTAMENPD,minPUTAMENPD)
-
-
-    //moCA
-    val moCARDDHC = moCARDD.filter(s=>patientHC.contains(s.patientID))
-    val meanMoCAHC = moCARDDHC.map(_.Score).sum()/moCARDDHC.map(_.Score).count()
-    val maxMoCAHC = moCARDDHC.map(_.Score).max()
-    val minMoCAHC = moCARDDHC.map(_.Score).min()
-
-    val moCARDDPD = moCARDD.filter(s=>patientPD.contains(s.patientID))
-    val meanMoCAPD = moCARDDPD.map(_.Score).sum()/moCARDDPD.map(_.Score).count()
-    val maxMoCAPD = moCARDDPD.map(_.Score).max()
-    val minMoCAPD = moCARDDPD.map(_.Score).min()
-
-    println("moCA")
-    println(meanMoCAHC,maxMoCAHC,minMoCAHC)
-    println(meanMoCAPD,maxMoCAPD,minMoCAPD)
-
-    //updrsI
-    val updrsIRDDHC = updrsIRDD.filter(s=>patientHC.contains(s.patientID))
-    val meanUpdrsIHC = updrsIRDDHC.map(_.Score).sum()/updrsIRDDHC.map(_.Score).count()
-    val maxUpdrsIHC = updrsIRDDHC.map(_.Score).max()
-    val minUpdrsIHC = updrsIRDDHC.map(_.Score).min()
-
-    val updrsIRDDPD = updrsIRDD.filter(s=>patientPD.contains(s.patientID))
-    val meanUpdrsIPD = updrsIRDDPD.map(_.Score).sum()/updrsIRDDPD.map(_.Score).count()
-    val maxUpdrsIPD = updrsIRDDPD.map(_.Score).max()
-    val minUpdrsIPD = updrsIRDDPD.map(_.Score).min()
-
-    println("updrsI")
-    println(meanUpdrsIHC,maxUpdrsIHC,minUpdrsIHC)
-    println(meanUpdrsIPD,maxUpdrsIPD,minUpdrsIPD)
-
-
-    //updrsI
-    val updrsIIRDDHC = updrsIIRDD.filter(s=>patientHC.contains(s.patientID))
-    val meanUpdrsIIHC = updrsIIRDDHC.map(_.Score).sum()/updrsIIRDDHC.map(_.Score).count()
-    val maxUpdrsIIHC = updrsIIRDDHC.map(_.Score).max()
-    val minUpdrsIIHC = updrsIIRDDHC.map(_.Score).min()
-
-    val updrsIIRDDPD = updrsIIRDD.filter(s=>patientPD.contains(s.patientID))
-    val meanUpdrsIIPD = updrsIIRDDPD.map(_.Score).sum()/updrsIIRDDPD.map(_.Score).count()
-    val maxUpdrsIIPD = updrsIIRDDPD.map(_.Score).max()
-    val minUpdrsIIPD = updrsIIRDDPD.map(_.Score).min()
-
-    println("updrsII")
-    println(meanUpdrsIIHC,maxUpdrsIIHC,minUpdrsIIHC)
-    println(meanUpdrsIIPD,maxUpdrsIIPD,minUpdrsIIPD)
-
-
-    (socEcoRDD, scDemogrEnrolledRDD, bioChemRDD, datScanRDD, upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, patientsWithLabel)
   }
+
+
+
+
+
 
   def createContext: SparkContext = {
     val conf = new SparkConf().setAppName("CSE 8803 Homework Two Application").setMaster("local")
