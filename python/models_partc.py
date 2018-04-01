@@ -5,6 +5,8 @@ from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score,roc_auc_score
 
+from operator import itemgetter
+
 import utils
 
 # PLEASE USE THE GIVEN FUNCTION NAME, DO NOT CHANGE IT
@@ -19,6 +21,8 @@ def logistic_regression_pred(X_train, Y_train, X_test):
 	#use default params for the classifier	
     logreg = LogisticRegression() # create new class
     logreg.fit(X_train, Y_train) # train
+    logregCoef = logreg.sparsify().coef_
+    # print logreg.intercept_
     Z = logreg.predict(X_test) # predict
     # print sum(abs(Z - Y_train))
     return Z

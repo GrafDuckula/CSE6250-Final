@@ -175,7 +175,8 @@ object FeatureConstruction {
 
 
   def constructBioChemRDDFeatureTuple(bioChemRDD: RDD[BIOCHEM]): RDD[FeatureTuple] = {
-    val featureTuples = bioChemRDD.map(s=>
+
+/*    val featureTuples = bioChemRDD.map(s=>
       if (s.testName == "ptau" && s.value == "<8") ((s.patientID, s.testName), 8.0)
       else if (s.testName == "ttau" && s.value == "<80") ((s.patientID, s.testName), 80.0)
       else if (s.testName == "abeta 1-42" && s.value== "<200") ((s.patientID, s.testName), 200.0)
@@ -208,22 +209,195 @@ object FeatureConstruction {
       else if (s.testName == "rs356181" && s.value== "T/T") ((s.patientID, s.testName), 2.0)
 
       else ((s.patientID, s.testName), s.value.toString.toDouble)
-    )
+    )*/
+
+    val featureTuples = bioChemRDD.flatMap{ s =>
+      if (s.testName == "ptau" && s.value == "<8") Seq(((s.patientID, s.testName), 8.0))
+      else if (s.testName == "ttau" && s.value == "<80") Seq(((s.patientID, s.testName), 80.0))
+      else if (s.testName == "abeta 1-42" && s.value== "<200") Seq(((s.patientID, s.testName), 200.0))
+      else if (s.testName == "abeta 1-42" && s.value== ">1700") Seq(((s.patientID, s.testName), 1700.0))
+
+      else if (s.testName == "apoe genotype" && s.value== "e3/e3") Seq(((s.patientID, "apoe_e2"), 0.0), ((s.patientID, "apoe_e3"), 2.0), ((s.patientID, "apoe_e4"), 0.0))
+      else if (s.testName == "apoe genotype" && s.value== "e2/e4") Seq(((s.patientID, "apoe_e2"), 1.0), ((s.patientID, "apoe_e3"), 0.0), ((s.patientID, "apoe_e4"), 1.0))
+      else if (s.testName == "apoe genotype" && s.value== "e3/e2") Seq(((s.patientID, "apoe_e2"), 1.0), ((s.patientID, "apoe_e3"), 1.0), ((s.patientID, "apoe_e4"), 0.0))
+      else if (s.testName == "apoe genotype" && s.value== "e4/e3") Seq(((s.patientID, "apoe_e2"), 0.0), ((s.patientID, "apoe_e3"), 1.0), ((s.patientID, "apoe_e4"), 1.0))
+      else if (s.testName == "apoe genotype" && s.value== "e4/e4") Seq(((s.patientID, "apoe_e2"), 0.0), ((s.patientID, "apoe_e3"), 0.0), ((s.patientID, "apoe_e4"), 2.0))
+      else if (s.testName == "apoe genotype" && s.value== "e2/e2") Seq(((s.patientID, "apoe_e2"), 2.0), ((s.patientID, "apoe_e3"), 0.0), ((s.patientID, "apoe_e4"), 0.0))
+
+
+      else if (s.testName == "rs76763715_gba_p.n370s" && s.value== "C/T") Seq(((s.patientID, "gba_C"), 1.0), ((s.patientID, "gba_T"), 1.0))
+      else if (s.testName == "rs76763715_gba_p.n370s" && s.value== "T/T") Seq(((s.patientID, "gba_C"), 0.0), ((s.patientID, "gba_T"), 2.0))
+
+
+      else if (s.testName == "rs34637584_lrrk2_p.g2019s" && s.value== "A/G") Seq(((s.patientID, "lrrk2_A"), 1.0), ((s.patientID, "lrrk2_G"), 1.0))
+      else if (s.testName == "rs34637584_lrrk2_p.g2019s" && s.value== "G/G") Seq(((s.patientID, "lrrk2_A"), 0.0), ((s.patientID, "lrrk2_G"), 2.0))
+
+
+      else if (s.testName == "rs17649553" && s.value== "C/C") Seq(((s.patientID, "rs17649553_C"), 2.0), ((s.patientID, "rs17649553_T"), 0.0))
+      else if (s.testName == "rs17649553" && s.value== "C/T") Seq(((s.patientID, "rs17649553_C"), 1.0), ((s.patientID, "rs17649553_T"), 1.0))
+      else if (s.testName == "rs17649553" && s.value== "T/T") Seq(((s.patientID, "rs17649553_C"), 0.0), ((s.patientID, "rs17649553_T"), 2.0))
+
+
+      else if (s.testName == "rs3910105" && s.value== "C/C") Seq(((s.patientID, "rs3910105_C"), 2.0), ((s.patientID, "rs3910105_T"), 0.0))
+      else if (s.testName == "rs3910105" && s.value== "C/T") Seq(((s.patientID, "rs3910105_C"), 1.0), ((s.patientID, "rs3910105_T"), 1.0))
+      else if (s.testName == "rs3910105" && s.value== "T/T") Seq(((s.patientID, "rs3910105_C"), 0.0), ((s.patientID, "rs3910105_T"), 2.0))
+
+
+      else if (s.testName == "rs356181" && s.value== "C/C") Seq(((s.patientID, "rs356181_C"), 2.0), ((s.patientID, "rs356181_T"), 0.0))
+      else if (s.testName == "rs356181" && s.value== "C/T") Seq(((s.patientID, "rs356181_C"), 1.0), ((s.patientID, "rs356181_T"), 1.0))
+      else if (s.testName == "rs356181" && s.value== "T/T") Seq(((s.patientID, "rs356181_C"), 0.0), ((s.patientID, "rs356181_T"), 2.0))
+
+
+     /* Maybe not important*/
+
+      else if (s.testName == "rs35801418_lrrk2_p.y1699c" && s.value== "A/A") Seq(((s.patientID, "Y1699C_A"), 2.0)) //not necessary
+      else if (s.testName == "rs35870237_lrrk2_p.i2020t" && s.value== "T/T") Seq(((s.patientID, "I2020T_T"), 2.0)) //not necessary
+      else if (s.testName == "rs34995376_lrrk2_p.r1441h" && s.value== "G/G") Seq(((s.patientID, "R1441H_G"), 2.0)) //not necessary
+
+      else if (s.testName == "snca_multiplication") Seq() // CopyNumberChange, NotAssessed, NormalCopyNumber)  //Not necessary
+      else if (s.testName == "score" && s.testType == "dna" && (s.value == "8.21E-05" || s.value == "4.64E-05")) Seq() // I am not sure what DNA score means
+      else if (s.testType == "rna" && s.unit== "SD") Seq()
+      else if (s.testName == "pd2" && s.unit== "Stdev") Seq()
+      else if (s.testName == "PD2 Peptoid" && s.value.toString.toDouble < 0) Seq(((s.patientID, "PD2 Peptoid"), 0.0))
+
+
+      else if (s.testName == "ldl" && s.value== "below detection limit") Seq(((s.patientID, "LDL"), 12.0))
+
+      else if (s.testName == "csf hemoglobin" && s.value== "below detection limit") Seq(((s.patientID, "csf hemoglobin"), 30.0))
+      else if (s.testName == "csf hemoglobin" && s.value== "below") Seq(((s.patientID, "csf hemoglobin"), 30.0))
+      else if (s.testName == "csf hemoglobin" && s.value== "above") Seq(((s.patientID, "csf hemoglobin"), 12500.0))
+      else if (s.testName == "csf hemoglobin" && s.value== ">12500 ng/ml") Seq(((s.patientID, "csf hemoglobin"), 12500.0))
+      else if (s.testName == "csf hemoglobin" && s.value== ">12500ng/ml") Seq(((s.patientID, "csf hemoglobin"), 12500.0))
+      else if (s.testName == "csf hemoglobin" && s.value== ">20") Seq(((s.patientID, "csf hemoglobin"), 20.0)) //???
+
+
+      // CT to TC mutation
+      else if (s.testName == "rs10797576" && s.value== "C/C") Seq(((s.patientID, "rs10797576_C"), 2.0), ((s.patientID, "rs10797576_T"), 0.0))
+      else if (s.testName == "rs10797576" && s.value== "C/T") Seq(((s.patientID, "rs10797576_C"), 1.0), ((s.patientID, "rs10797576_T"), 1.0))
+      else if (s.testName == "rs10797576" && s.value== "T/T") Seq(((s.patientID, "rs10797576_C"), 0.0), ((s.patientID, "rs10797576_T"), 2.0))
+
+      else if (s.testName == "rs11158026" && s.value== "C/C") Seq(((s.patientID, "rs11158026_C"), 2.0), ((s.patientID, "rs11158026_T"), 0.0))
+      else if (s.testName == "rs11158026" && s.value== "C/T") Seq(((s.patientID, "rs11158026_C"), 1.0), ((s.patientID, "rs11158026_T"), 1.0))
+      else if (s.testName == "rs11158026" && s.value== "T/T") Seq(((s.patientID, "rs11158026_C"), 0.0), ((s.patientID, "rs11158026_T"), 2.0))
+
+      else if (s.testName == "rs115462410" && s.value== "C/C") Seq(((s.patientID, "rs115462410_C"), 2.0), ((s.patientID, "rs115462410_T"), 0.0))
+      else if (s.testName == "rs115462410" && s.value== "C/T") Seq(((s.patientID, "rs115462410_C"), 1.0), ((s.patientID, "rs115462410_T"), 1.0))
+      else if (s.testName == "rs115462410" && s.value== "T/T") Seq(((s.patientID, "rs115462410_C"), 0.0), ((s.patientID, "rs115462410_T"), 2.0))
+
+      else if (s.testName == "rs199347" && s.value== "C/C") Seq(((s.patientID, "rs199347_C"), 2.0), ((s.patientID, "rs199347_T"), 0.0))
+      else if (s.testName == "rs199347" && s.value== "C/T") Seq(((s.patientID, "rs199347_C"), 1.0), ((s.patientID, "rs199347_T"), 1.0))
+      else if (s.testName == "rs199347" && s.value== "T/T") Seq(((s.patientID, "rs199347_C"), 0.0), ((s.patientID, "rs199347_T"), 2.0))
+
+      else if (s.testName == "rs329648" && s.value== "C/C") Seq(((s.patientID, "rs329648_C"), 2.0), ((s.patientID, "rs329648_T"), 0.0))
+      else if (s.testName == "rs329648" && s.value== "C/T") Seq(((s.patientID, "rs329648_C"), 1.0), ((s.patientID, "rs329648_T"), 1.0))
+      else if (s.testName == "rs329648" && s.value== "T/T") Seq(((s.patientID, "rs329648_C"), 0.0), ((s.patientID, "rs329648_T"), 2.0))
+
+      else if (s.testName == "rs6430538" && s.value== "C/C") Seq(((s.patientID, "rs6430538_C"), 2.0), ((s.patientID, "rs6430538_T"), 0.0))
+      else if (s.testName == "rs6430538" && s.value== "C/T") Seq(((s.patientID, "rs6430538_C"), 1.0), ((s.patientID, "rs6430538_T"), 1.0))
+      else if (s.testName == "rs6430538" && s.value== "T/T") Seq(((s.patientID, "rs6430538_C"), 0.0), ((s.patientID, "rs6430538_T"), 2.0))
+
+      else if (s.testName == "rs6812193" && s.value== "C/C") Seq(((s.patientID, "rs6812193_C"), 2.0), ((s.patientID, "rs6812193_T"), 0.0))
+      else if (s.testName == "rs6812193" && s.value== "C/T") Seq(((s.patientID, "rs6812193_C"), 1.0), ((s.patientID, "rs6812193_T"), 1.0))
+      else if (s.testName == "rs6812193" && s.value== "T/T") Seq(((s.patientID, "rs6812193_C"), 0.0), ((s.patientID, "rs6812193_T"), 2.0))
+
+      else if (s.testName == "rs76904798" && s.value== "C/C") Seq(((s.patientID, "rs76904798_C"), 2.0), ((s.patientID, "rs76904798_T"), 0.0))
+      else if (s.testName == "rs76904798" && s.value== "C/T") Seq(((s.patientID, "rs76904798_C"), 1.0), ((s.patientID, "rs76904798_T"), 1.0))
+      else if (s.testName == "rs76904798" && s.value== "T/T") Seq(((s.patientID, "rs76904798_C"), 0.0), ((s.patientID, "rs76904798_T"), 2.0))
+
+      else if (s.testName == "rs823118" && s.value== "C/C") Seq(((s.patientID, "rs823118_C"), 2.0), ((s.patientID, "rs823118_T"), 0.0))
+      else if (s.testName == "rs823118" && s.value== "C/T") Seq(((s.patientID, "rs823118_C"), 1.0), ((s.patientID, "rs823118_T"), 1.0))
+      else if (s.testName == "rs823118" && s.value== "T/T") Seq(((s.patientID, "rs823118_C"), 0.0), ((s.patientID, "rs823118_T"), 2.0))
+
+
+      // GT or TG mutation
+      else if (s.testName == "rs1955337" && s.value== "G/G") Seq(((s.patientID, "rs1955337_G"), 2.0), ((s.patientID, "rs1955337_T"), 0.0))
+      else if (s.testName == "rs1955337" && s.value== "G/T") Seq(((s.patientID, "rs1955337_G"), 1.0), ((s.patientID, "rs1955337_T"), 1.0))
+      else if (s.testName == "rs1955337" && s.value== "T/T") Seq(((s.patientID, "rs1955337_G"), 0.0), ((s.patientID, "rs1955337_T"), 2.0))
+
+      else if (s.testName == "rs34884217" && s.value== "G/G") Seq(((s.patientID, "rs34884217_G"), 2.0), ((s.patientID, "rs34884217_T"), 0.0))
+      else if (s.testName == "rs34884217" && s.value== "G/T") Seq(((s.patientID, "rs34884217_G"), 1.0), ((s.patientID, "rs34884217_T"), 1.0))
+      else if (s.testName == "rs34884217" && s.value== "T/T") Seq(((s.patientID, "rs34884217_G"), 0.0), ((s.patientID, "rs34884217_T"), 2.0))
+
+      // AG or GA Mutation
+      else if (s.testName == "rs11060180" && s.value== "G/G") Seq(((s.patientID, "rs11060180_G"), 2.0), ((s.patientID, "rs11060180_A"), 0.0))
+      else if (s.testName == "rs11060180" && s.value== "A/G") Seq(((s.patientID, "rs11060180_G"), 1.0), ((s.patientID, "rs11060180_A"), 1.0))
+      else if (s.testName == "rs11060180" && s.value== "A/A") Seq(((s.patientID, "rs11060180_G"), 0.0), ((s.patientID, "rs11060180_A"), 2.0))
+
+      else if (s.testName == "rs11868035" && s.value== "G/G") Seq(((s.patientID, "rs11868035_G"), 2.0), ((s.patientID, "rs11868035_A"), 0.0))
+      else if (s.testName == "rs11868035" && s.value== "A/G") Seq(((s.patientID, "rs11868035_G"), 1.0), ((s.patientID, "rs11868035_A"), 1.0))
+      else if (s.testName == "rs11868035" && s.value== "A/A") Seq(((s.patientID, "rs11868035_G"), 0.0), ((s.patientID, "rs11868035_A"), 2.0))
+
+      else if (s.testName == "rs12456492" && s.value== "G/G") Seq(((s.patientID, "rs12456492_G"), 2.0), ((s.patientID, "rs12456492_A"), 0.0))
+      else if (s.testName == "rs12456492" && s.value== "A/G") Seq(((s.patientID, "rs12456492_G"), 1.0), ((s.patientID, "rs12456492_A"), 1.0))
+      else if (s.testName == "rs12456492" && s.value== "A/A") Seq(((s.patientID, "rs12456492_G"), 0.0), ((s.patientID, "rs12456492_A"), 2.0))
+
+      else if (s.testName == "rs12637471" && s.value== "G/G") Seq(((s.patientID, "rs12637471_G"), 2.0), ((s.patientID, "rs12637471_A"), 0.0))
+      else if (s.testName == "rs12637471" && s.value== "A/G") Seq(((s.patientID, "rs12637471_G"), 1.0), ((s.patientID, "rs12637471_A"), 1.0))
+      else if (s.testName == "rs12637471" && s.value== "A/A") Seq(((s.patientID, "rs12637471_G"), 0.0), ((s.patientID, "rs12637471_A"), 2.0))
+
+      else if (s.testName == "rs14235" && s.value== "G/G") Seq(((s.patientID, "rs14235_G"), 2.0), ((s.patientID, "rs14235_A"), 0.0))
+      else if (s.testName == "rs14235" && s.value== "A/G") Seq(((s.patientID, "rs14235_G"), 1.0), ((s.patientID, "rs14235_A"), 1.0))
+      else if (s.testName == "rs14235" && s.value== "A/A") Seq(((s.patientID, "rs14235_G"), 0.0), ((s.patientID, "rs14235_A"), 2.0))
+
+
+
+      else if (s.testName == "rs2414739" && s.value== "G/G") Seq(((s.patientID, "rs2414739_G"), 2.0), ((s.patientID, "rs2414739_A"), 0.0))
+      else if (s.testName == "rs2414739" && s.value== "A/G") Seq(((s.patientID, "rs2414739_G"), 1.0), ((s.patientID, "rs2414739_A"), 1.0))
+      else if (s.testName == "rs2414739" && s.value== "A/A") Seq(((s.patientID, "rs2414739_G"), 0.0), ((s.patientID, "rs2414739_A"), 2.0))
+
+      else if (s.testName == "rs34311866" && s.value== "G/G") Seq(((s.patientID, "rs34311866_G"), 2.0), ((s.patientID, "rs34311866_A"), 0.0))
+      else if (s.testName == "rs34311866" && s.value== "A/G") Seq(((s.patientID, "rs34311866_G"), 1.0), ((s.patientID, "rs34311866_A"), 1.0))
+      else if (s.testName == "rs34311866" && s.value== "A/A") Seq(((s.patientID, "rs34311866_G"), 0.0), ((s.patientID, "rs34311866_A"), 2.0))
+
+      else if (s.testName == "rs55785911" && s.value== "G/G") Seq(((s.patientID, "rs55785911_G"), 2.0), ((s.patientID, "rs55785911_A"), 0.0))
+      else if (s.testName == "rs55785911" && s.value== "A/G") Seq(((s.patientID, "rs55785911_G"), 1.0), ((s.patientID, "rs55785911_A"), 1.0))
+      else if (s.testName == "rs55785911" && s.value== "A/A") Seq(((s.patientID, "rs55785911_G"), 0.0), ((s.patientID, "rs55785911_A"), 2.0))
+
+      else if (s.testName == "rs591323" && s.value== "G/G") Seq(((s.patientID, "rs591323_G"), 2.0), ((s.patientID, "rs591323_A"), 0.0))
+      else if (s.testName == "rs591323" && s.value== "A/G") Seq(((s.patientID, "rs591323_G"), 1.0), ((s.patientID, "rs591323_A"), 1.0))
+      else if (s.testName == "rs591323" && s.value== "A/A") Seq(((s.patientID, "rs591323_G"), 0.0), ((s.patientID, "rs591323_A"), 2.0))
+
+      // AC mutation
+      else if (s.testName == "rs11724635" && s.value== "C/C") Seq(((s.patientID, "rs11724635_C"), 2.0), ((s.patientID, "rs11724635_A"), 0.0))
+      else if (s.testName == "rs11724635" && s.value== "A/C") Seq(((s.patientID, "rs11724635_C"), 1.0), ((s.patientID, "rs11724635_A"), 1.0))
+      else if (s.testName == "rs11724635" && s.value== "A/A") Seq(((s.patientID, "rs11724635_C"), 0.0), ((s.patientID, "rs11724635_A"), 2.0))
+
+      // CT or TC mutation
+      else if (s.testName == "rs71628662" && s.value== "C/T") Seq(((s.patientID, "rs71628662_C"), 1.0), ((s.patientID, "rs71628662_T"), 1.0))
+      else if (s.testName == "rs71628662" && s.value== "T/T") Seq(((s.patientID, "rs71628662_C"), 0.0), ((s.patientID, "rs71628662_T"), 2.0))
+
+
+      else if (s.testName == "rs118117788" && s.value== "C/C") Seq(((s.patientID, "rs118117788_C"), 2.0), ((s.patientID, "rs118117788_T"), 0.0))
+      else if (s.testName == "rs118117788" && s.value== "C/T") Seq(((s.patientID, "rs118117788_C"), 1.0), ((s.patientID, "rs118117788_T"), 1.0))
+
+      else if (s.testName == "rs8192591" && s.value== "C/C") Seq(((s.patientID, "rs8192591_C"), 2.0), ((s.patientID, "rs8192591_T"), 0.0))
+      else if (s.testName == "rs8192591" && s.value== "C/T") Seq(((s.patientID, "rs8192591_C"), 1.0), ((s.patientID, "rs8192591_T"), 1.0))
+
+      // GC mutation
+      else if (s.testName == "rs114138760" && s.value== "G/G") Seq(((s.patientID, "rs114138760_G"), 2.0), ((s.patientID, "rs114138760_C"), 0.0))
+      else if (s.testName == "rs114138760" && s.value== "C/G") Seq(((s.patientID, "rs114138760_G"), 1.0), ((s.patientID, "rs114138760_C"), 1.0))
+
+
+      else Seq(((s.patientID, s.testName), s.value.toString.toDouble))
+    }
+
 
 /*    val temp = featureTuples.filter(s=>s._1._2 == "ptau"||s._1._2 == "ttau"||s._1._2 == "abeta 1-42").
       map(s=>(s._1._1, (s._1._2, s._2))).
       groupByKey()*/
 
 
-
-
     val bioChemCount = featureTuples.map(s=>(s._1,1.0)).reduceByKey(_+_)
     val bioChemSum = featureTuples.reduceByKey(_+_)
     val bioChemfeatureTuples = bioChemCount.join(bioChemSum).map(s=>(s._1, s._2._2.toString.toDouble/s._2._1))
 
-    // why some of the baseline was took several years apart???
+    val bioChemfeatureMax = bioChemfeatureTuples.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.max))
+    val bioChemfeatureNorm = bioChemfeatureTuples.map(s=>(s._1._2, (s._1._1, s._2))).join(bioChemfeatureMax).
+      map{s=>
+        if (s._2._2 == 0) ((s._2._1._1, s._1), 0.0)
+        else ((s._2._1._1, s._1), s._2._1._2/s._2._2)}
 
-    bioChemfeatureTuples
+    bioChemfeatureNorm
   }
 
   // ABeta 1-42	                <200 >1700
@@ -240,7 +414,6 @@ object FeatureConstruction {
   // rs356181                   C/T, T/T, C/C
   // SNCA_multiplication        CopyNumberChange, NotAssessed, NormalCopyNumber)  //Not necessary
 
-// could StandardScaler accept numeric and categorical features? feature a: 2.3, feature b, [1, 0, 0]
 
 
 
@@ -262,9 +435,10 @@ object FeatureConstruction {
 
     /** create a feature name to id map*/
 
-    val featureID = feature.map(s=>s._1._2).distinct().collect().zipWithIndex.toMap //(feature name -> feature ID)
-    val numFeature = featureID.keys.size
+    val featureID = feature.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
 
+    val numFeature = featureID.keys.size
+    println("num of Features")
     println(numFeature)
 
     /** transform input feature */
@@ -294,7 +468,11 @@ object FeatureConstruction {
     feature.cache()
 
     // Generate training data for SKlearn
-    val featureID = feature.map(s=>s._1._2).distinct().collect().zipWithIndex.toMap //(feature name -> feature ID)
+    val featureID = feature.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
+
+    import scala.collection.immutable.ListMap
+    println("Feature Map")
+    ListMap(featureID.toSeq.sortBy(_._2):_*).foreach(println)
 
     println("Generating training data for SKlearn")
 

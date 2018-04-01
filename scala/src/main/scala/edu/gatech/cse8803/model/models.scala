@@ -10,7 +10,7 @@ case class EDU(patientID:String, years: Int)
 
 case class DEMOGR(patientID:String, gender: String, age: Double)
 
-case class BIOCHEM(patientID:String, eventID: String, testName: String, value: Any)
+case class BIOCHEM(patientID:String, eventID: String, testType: String, testName: String, value: Any, unit: String)
 
 case class DATSCAN(patientID:String, eventID: String, CAUDATE: Double, PUTAMEN: Double, cpRatio: Double, caudateAsym: Double, putamenAsym: Double)
 

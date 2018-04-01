@@ -22,7 +22,9 @@ def get_acc_auc_kfold(X,Y,k=5):
     auc_list = []
     for train_idx, test_idx in kf:
         Y_pred = models_partc.logistic_regression_pred(X[train_idx],Y[train_idx],X[test_idx])
-        acc, auc_, precision, recall, f1score = models_partc.classification_metrics(Y_pred,Y[test_idx])
+        # Y_pred = models_partc.svm_pred(X[train_idx],Y[train_idx],X[test_idx])
+        # Y_pred = models_partc.decisionTree_pred(X[train_idx],Y[train_idx],X[test_idx])
+        acc, auc_, precision, recall, f1score = models_partc.classification_metrics(Y_pred,Y[test_idx]) 
         acc_list.append(acc)
         auc_list.append(auc_)
     acc_ave = mean(acc_list)
@@ -42,6 +44,8 @@ def get_acc_auc_randomisedCV(X,Y,iterNo=5,test_percent=0.2):
     auc_list = []
     for train_idx, test_idx in rs:
         Y_pred = models_partc.logistic_regression_pred(X[train_idx],Y[train_idx],X[test_idx])
+        # Y_pred = models_partc.svm_pred(X[train_idx],Y[train_idx],X[test_idx])
+        # Y_pred = models_partc.decisionTree_pred(X[train_idx],Y[train_idx],X[test_idx])
         acc, auc_, precision, recall, f1score = models_partc.classification_metrics(Y_pred,Y[test_idx])
         acc_list.append(acc)
         auc_list.append(auc_)
@@ -52,8 +56,8 @@ def get_acc_auc_randomisedCV(X,Y,iterNo=5,test_percent=0.2):
 
 def main():
 
-    # X,Y = utils.get_data_from_svmlight("../code_scala/output/withoutUPDRS.train")
-    X,Y = utils.get_data_from_svmlight("../code_scala/output/withUPDRS.train")
+    # X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS.train")
+    X,Y = utils.get_data_from_svmlight("../scala/output/withUPDRS.train")
     print "Classifier: Logistic Regression__________"
     acc_k,auc_k = get_acc_auc_kfold(X,Y)
     print "Average Accuracy in KFold CV: "+str(acc_k)

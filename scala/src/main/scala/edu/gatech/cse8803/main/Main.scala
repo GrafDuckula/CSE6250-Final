@@ -39,7 +39,7 @@ object Main {
     upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, updrsIIIRDD, patientsWithLabel) = loadRddRawData(sqlContext)
 
     /** calculate and print statistics*/
-    printStatistics(socEcoRDD, scDemogrRDD, bioChemRDD, datScanRDD, quipRDD, upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, patientsWithLabel)
+    // printStatistics(socEcoRDD, scDemogrRDD, bioChemRDD, datScanRDD, quipRDD, upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, patientsWithLabel)
 
     /** conduct phenotyping */
     val phenotypeLabel = patientsWithLabel
@@ -86,13 +86,13 @@ object Main {
 
 
     // val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeaturesWithoutUPDRS)
-    val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeaturesWithUPDRS)
+    // val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeaturesWithUPDRS)
 
 
-    println(f"[All feature] purity of kMeans is: $kMeansPurity%.5f")
+/*    println(f"[All feature] purity of kMeans is: $kMeansPurity%.5f")
     println(f"[All feature] purity of GMM is: $gaussianMixturePurity%.5f")
     println(f"[All feature] purity of StreamingKMeans is: $streamKmeansPurity%.5f")
-    println(f"[All feature] purity of NMF is: $nmfPurity%.5f")
+    println(f"[All feature] purity of NMF is: $nmfPurity%.5f")*/
 
     sc.stop 
   }
@@ -207,15 +207,29 @@ object Main {
     /**_Biospecimen*/
 
     val bioChem = CSVUtils.loadCSVAsTable(sqlContext,"data/Biospecimen_Analysis_Results.csv").
-      toDF().select("PATNO","GENDER","DIAGNOSIS","CLINICAL_EVENT","TYPE","TESTNAME","TESTVALUE").cache() //DNA RNA biochemical
+      toDF().select("PATNO","GENDER","DIAGNOSIS","CLINICAL_EVENT","TYPE","TESTNAME","TESTVALUE", "UNITS").cache() //DNA RNA biochemical
     val bioChemFilterd = bioChem.filter((bioChem("TESTVALUE") !== "") and bioChem("TESTVALUE").isNotNull
       and (bioChem("TESTVALUE")!== "Undetermined") and (bioChem("TESTVALUE") !== "N/A") and (bioChem("TESTVALUE") !== "NA"))
 
-    val bioChemFeatures = Source.fromFile("data/All_for_filter.txt").getLines().map(_.toLowerCase).toSet[String]
-    val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString,s(5).toString.toLowerCase(),s(6))).
-      filter(s=>bioChemFeatures.contains(s.testName)).
+    /** All features in Biospecimen*/
+
+    val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString, s(4).toString.toLowerCase(), s(5).toString.toLowerCase(),s(6).toString, s(7).toString)).
       filter(s=>s.eventID=="BL"||s.eventID=="SC").
       filter(s=>allPatientsID.contains(s.patientID))
+
+/*    bioChemRDD.map(s=>((s.testType, s.testName), s.value.toString)).filter(s=> ! s._2.matches("[-+]?[0-9]*\\.?[0-9]*")).
+      distinct.groupByKey().sortByKey().collect().foreach(println)*/
+
+
+    /** Features selected base on literature */
+/*    val bioChemFeatures = Source.fromFile("data/All_for_filter.txt").getLines().map(_.toLowerCase).toSet[String]
+
+    val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString, s(4).toString.toLowerCase(), s(5).toString.toLowerCase(), s(6), s(7).toString)).
+      filter(s=>bioChemFeatures.contains(s.testName)).
+      filter(s=>s.eventID=="BL"||s.eventID=="SC").
+      filter(s=>allPatientsID.contains(s.patientID))*/
+
+
 
 
 
@@ -232,10 +246,6 @@ object Main {
         (s(0).toString, s(1).toString, caudate, putamen, caudate/putamen, caudateAsym, putamenAsym)}
 
     val datScanRDD = datScan.map(s=>DATSCAN(s._1,s._2,s._3,s._4,s._5,s._6,s._7)).filter(s=>allPatientsID.contains(s.patientID)).filter(s=>s.eventID=="SC")
-    /*    val datScan = CSVUtils.loadCSVAsTable(sqlContext,"data/DATScan_Analysis.csv").
-          toDF().select("PATNO","EVENT_ID","CAUDATE_R","CAUDATE_L","PUTAMEN_R","PUTAMEN_L").cache().
-          map(s=>(s(0).toString, s(1).toString, List(s(2), s(3)).map(_.toString).map(_.toDouble).sum, List(s(4), s(5)).map(_.toString).map(_.toDouble).sum))*/
-
 
 
     /**Non-motor_Assessments*/
