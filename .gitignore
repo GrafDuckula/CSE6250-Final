@@ -1,4 +1,13 @@
-.idea/
-project/
+scala/output/*
+scala/data/*
+scala/project/target/*
+scala/target/*
+scala/project/project/*
 scala/.idea/
-target/
+python/.*.py
+python/checkpoint
+python/ppmi/*
+python/ppmi.*
+python/cifar-10-batches-py/
+python/target/
+python/urban.*

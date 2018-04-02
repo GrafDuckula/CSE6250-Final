@@ -3,6 +3,8 @@
  */
 package edu.gatech.cse8803.features
 
+import java.io.{File, PrintWriter}
+
 import edu.gatech.cse8803.model._
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
@@ -441,6 +443,7 @@ object FeatureConstruction {
     /** create a feature name to id map*/
 
     val featureID = feature.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
+    println("FeatureConstruction:construct start..")
 
     val numFeature = featureID.keys.size
     println("num of Features")
@@ -454,7 +457,48 @@ object FeatureConstruction {
       val res = (s._1, featureVector)
       res
     }
+    println("FeatureConstruction:construct ends..")
+    result
 
+  }
+
+
+
+  /**
+    * Given a feature tuples RDD, construct features in vector
+    * format for each patient. feature name should be mapped
+    * to some index and convert to dense feature format.
+    * @param sc SparkContext to run
+    * @param feature RDD of input feature tuples
+    * @return
+    */
+  def constructDense(sc: SparkContext, feature: RDD[FeatureTuple], phenotypeLabel:RDD[(String, Int)]): RDD[(String, Vector)] = {
+
+    /** save for later usage */
+    feature.cache()
+    //val scFeature = sc.broadcast(feature) //So we need this?
+
+    /** create a feature name to id map*/
+
+    val featureID = feature.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
+    println("FeatureConstruction:constructDense start..")
+
+    val numFeature = featureID.keys.size
+    println("num of Features")
+    println(numFeature)
+
+    /** transform input feature */
+    val result = feature.map(s=>(s._1._1, (s._1._2, s._2))).groupByKey().map{s=>
+      val full_features = Array.fill(numFeature)(0.0)
+      val indexedFeatures = s._2.toList.map(s=>(featureID(s._1),s._2)).toMap
+      for (i <- 0 until numFeature) {
+        full_features.update(i, indexedFeatures.getOrElse(i, 0.0))
+      }
+      val featureVector = Vectors.dense(full_features)
+      val res = (s._1, featureVector)
+      res
+    }
+    println("FeatureConstruction:constructDense ends..")
     result
 
   }
@@ -514,6 +558,68 @@ object FeatureConstruction {
     pw.close()
 
     println("Done")
+
+  }
+
+
+
+
+  /** save features in pickle format for tflearn
+    * @param sc SparkContext to run
+    * @param feature RDD of input feature tuples
+    * @return
+    * */
+
+  def saveDenseFeatures(sc: SparkContext, feature: RDD[(String, Vector)], phenotypeLabel:RDD[(String, Int)], updrs: Int): Unit = {
+
+    /** save for later usage */
+    println("saveDenseFeatures starts")
+
+    feature.cache()
+
+    val data = feature.sortBy(f => f._1).map(f => f._2)
+    val labels = phenotypeLabel.sortBy(f => f._1).map(f => f._2)
+
+    var data_file = new File("output/X_train1.csv")
+    var labels_file = new File("output/Y_train1.csv")
+
+    if(updrs == 0) {
+      var data_file = new File("output/X_train0.csv")
+      var labels_file = new File("output/Y_train0.csv")
+    }
+    else {
+      var data_file = new File("output/X_train1.csv")
+      var labels_file = new File("output/Y_train1.csv")
+    }
+
+    data_file.delete()
+    labels_file.delete()
+
+    data.map(f => f.toString.substring(1, f.toString.length-1)).saveAsTextFile(data_file.getAbsolutePath)
+    labels.saveAsTextFile(labels_file.getAbsolutePath)
+
+
+
+//    for(vector <- data) {
+//      val vector_values = vector.toArray
+//      val vector_length = vector_values.length
+//      for(index <- 0  until  vector_length - 1) {
+//        data_file.print(vector_values(index))
+//        data_file.print(",")
+//      }
+//      data_file.print(vector_values(vector_length - 1))
+//      data_file.printf("\n")
+//    }
+//
+//    for(label <- labels) {
+//      labels_file.printf(label.toString)
+//      labels_file.printf("\n")
+//    }
+//
+//    data_file.close()
+//    labels_file.close()
+
+    println("saveDenseFeatures Done")
 
   }
 }
