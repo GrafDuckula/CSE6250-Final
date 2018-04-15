@@ -5,10 +5,7 @@ from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score,roc_auc_score
 
-from scipy.sparse import csr_matrix
-from sklearn.decomposition import TruncatedSVD
-from sklearn.ensemble import BaggingClassifier, AdaBoostClassifier
-from sklearn.svm import SVC
+from operator import itemgetter
 
 import utils
 
@@ -17,23 +14,17 @@ import utils
 # THE TESTS WILL NEVER PASS
 RANDOM_STATE = 545510477
 
-
-
 #input: X_train, Y_train and X_test
 #output: Y_pred
 def logistic_regression_pred(X_train, Y_train, X_test):
 	#TODO: train a logistic regression classifier using X_train and Y_train. Use this to predict labels of X_test
 	#use default params for the classifier	
-    
-    
-    # Without PCA
     logreg = LogisticRegression() # create new class
     logreg.fit(X_train, Y_train) # train
     logregCoef = logreg.sparsify().coef_
-    # print logregCoef
+    # print logreg.intercept_
     Z = logreg.predict(X_test) # predict
     # print sum(abs(Z - Y_train))
-    
     return Z
 
 #input: X_train, Y_train and X_test
@@ -57,30 +48,6 @@ def decisionTree_pred(X_train, Y_train, X_test):
     Z = dTree.predict(X_test) # predict
     # print sum(abs(Z - Y_train))
     return Z
-
-def ada_boost_pred(X_train, Y_train, X_test):
-    
-    clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=15), n_estimators=100,random_state=RANDOM_STATE)
-    clf.fit(X_train, Y_train) # train
-    Y_pred  = clf.predict(X_test)
-
-    return Y_pred
-
-def bagging_log_pred(X_train, Y_train, X_test):
-    
-    bagging = BaggingClassifier(LogisticRegression(), max_samples = 0.8, random_state=RANDOM_STATE)
-    bagging.fit(X_train, Y_train)
-    Y_pred = bagging.predict(X_test)
-
-    return Y_pred
-
-def bagging_SVC_pred(X_train, Y_train, X_test):
-    
-    bagging = BaggingClassifier(SVC(kernel='linear', probability=True), max_samples = 0.8, random_state=RANDOM_STATE)
-    bagging.fit(X_train, Y_train)
-    Y_pred = bagging.predict(X_test)
-
-    return Y_pred
 
 
 #input: Y_pred,Y_true
@@ -111,7 +78,7 @@ def display_metrics(classifierName,Y_pred,Y_true):
 def main():
 	X_train, Y_train = utils.get_data_from_svmlight("../deliverables/features_svmlight.train")
 	X_test, Y_test = utils.get_data_from_svmlight("../data/features_svmlight.validate")
-    
+
 	display_metrics("Logistic Regression",logistic_regression_pred(X_train,Y_train,X_test),Y_test)
 	display_metrics("SVM",svm_pred(X_train,Y_train,X_test),Y_test)
 	display_metrics("Decision Tree",decisionTree_pred(X_train,Y_train,X_test),Y_test)

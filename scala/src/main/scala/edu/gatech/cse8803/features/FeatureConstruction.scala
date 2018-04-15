@@ -383,26 +383,21 @@ object FeatureConstruction {
       else Seq(((s.patientID, s.testName), s.value.toString.toDouble))
     }
 
-    val ptauTuple = featureTuples.filter(s=>s._1._2 == "ptau").map(s=>(s._1._1, s._2))
-    val ttauTuple = featureTuples.filter(s=>s._1._2 == "ttau").map(s=>(s._1._1, s._2))
-    val abetaTuple = featureTuples.filter(s=>s._1._2 == "abeta 1-42").map(s=>(s._1._1, s._2))
 
-    val ptauTTauRatio = ptauTuple.join(ttauTuple).map(s=>((s._1, "ptauTTauRatio"), s._2._1/s._2._2)) // pTau/total Tau
-    val ptauAbetaRatio = ptauTuple.join(abetaTuple).map(s=>((s._1, "ptauAbetaRatio"), s._2._1/s._2._2)) // pTau/abeta 1-42
-    val ttauAbetaRatio = ttauTuple.join(abetaTuple).map(s=>((s._1, "ttauAbetaRatio"), s._2._1/s._2._2)) // tTau/abeta 1-42
-
-    val featureTuplesPlus = featureTuples.union(ptauTTauRatio).union(ptauAbetaRatio).union(ttauAbetaRatio)
+/*    val temp = featureTuples.filter(s=>s._1._2 == "ptau"||s._1._2 == "ttau"||s._1._2 == "abeta 1-42").
+      map(s=>(s._1._1, (s._1._2, s._2))).
+      groupByKey()*/
 
 
-    val bioChemCount = featureTuplesPlus.map(s=>(s._1,1.0)).reduceByKey(_+_)
-    val bioChemSum = featureTuplesPlus.reduceByKey(_+_)
+    val bioChemCount = featureTuples.map(s=>(s._1,1.0)).reduceByKey(_+_)
+    val bioChemSum = featureTuples.reduceByKey(_+_)
     val bioChemfeatureTuples = bioChemCount.join(bioChemSum).map(s=>(s._1, s._2._2.toString.toDouble/s._2._1))
 
     val bioChemfeatureMax = bioChemfeatureTuples.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.max))
     val bioChemfeatureNorm = bioChemfeatureTuples.map(s=>(s._1._2, (s._1._1, s._2))).join(bioChemfeatureMax).
       map{s=>
         if (s._2._2 == 0) ((s._2._1._1, s._1), 0.0)
-        else ((s._2._1._1, s._1), s._2._1._2/s._2._2.toString.toDouble)}
+        else ((s._2._1._1, s._1), s._2._1._2/s._2._2)}
 
     bioChemfeatureNorm
   }
