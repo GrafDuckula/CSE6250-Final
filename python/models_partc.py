@@ -27,10 +27,19 @@ def logistic_regression_pred(X_train, Y_train, X_test):
     
     
     # Without PCA
-    logreg = LogisticRegression() # create new class
+    logreg = LogisticRegression(random_state=RANDOM_STATE) # create new class
     logreg.fit(X_train, Y_train) # train
-    logregCoef = logreg.sparsify().coef_
+    
+    #    Save feature coefficients
+     
+#    logregCoef = logreg.sparsify().coef_.todense()
+#    target = open('features-weight.csv', 'a')
+#    target.write("%s,%s\n" %("feature-index","feature-weight"));
+#    for i in range(logregCoef.shape[1]):
+#        target.write("%s,%s\n" %(i, logregCoef[0,i]));
+    
     # print logregCoef
+    
     Z = logreg.predict(X_test) # predict
     # print sum(abs(Z - Y_train))
     
@@ -41,7 +50,7 @@ def logistic_regression_pred(X_train, Y_train, X_test):
 def svm_pred(X_train, Y_train, X_test):
 	#TODO:train a SVM classifier using X_train and Y_train. Use this to predict labels of X_test
 	#use default params for the classifier
-    lsvc = LinearSVC() # create new class
+    lsvc = LinearSVC(random_state=RANDOM_STATE) # create new class
     lsvc.fit(X_train, Y_train) # train
     Z = lsvc.predict(X_test) # predict
     # print sum(abs(Z - Y_train))
@@ -52,7 +61,7 @@ def svm_pred(X_train, Y_train, X_test):
 def decisionTree_pred(X_train, Y_train, X_test):
 	#TODO:train a logistic regression classifier using X_train and Y_train. Use this to predict labels of X_test
 	#IMPORTANT: use max_depth as 5. Else your test cases might fail.
-    dTree = DecisionTreeClassifier(max_depth=5) # create new class
+    dTree = DecisionTreeClassifier(max_depth=5, random_state=RANDOM_STATE) # create new class
     dTree.fit(X_train, Y_train) # train
     Z = dTree.predict(X_test) # predict
     # print sum(abs(Z - Y_train))
@@ -60,7 +69,7 @@ def decisionTree_pred(X_train, Y_train, X_test):
 
 def ada_boost_pred(X_train, Y_train, X_test):
     
-    clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=15), n_estimators=100,random_state=RANDOM_STATE)
+    clf = AdaBoostClassifier(DecisionTreeClassifier(max_depth=5), n_estimators=100,random_state=RANDOM_STATE)
     clf.fit(X_train, Y_train) # train
     Y_pred  = clf.predict(X_test)
 

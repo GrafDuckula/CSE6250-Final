@@ -398,13 +398,15 @@ object FeatureConstruction {
     val bioChemSum = featureTuplesPlus.reduceByKey(_+_)
     val bioChemfeatureTuples = bioChemCount.join(bioChemSum).map(s=>(s._1, s._2._2.toString.toDouble/s._2._1))
 
-    val bioChemfeatureMax = bioChemfeatureTuples.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.max))
+/*    val bioChemfeatureMax = bioChemfeatureTuples.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.max))
     val bioChemfeatureNorm = bioChemfeatureTuples.map(s=>(s._1._2, (s._1._1, s._2))).join(bioChemfeatureMax).
       map{s=>
         if (s._2._2 == 0) ((s._2._1._1, s._1), 0.0)
         else ((s._2._1._1, s._1), s._2._1._2/s._2._2.toString.toDouble)}
 
-    bioChemfeatureNorm
+    bioChemfeatureNorm*/
+
+    bioChemfeatureTuples
   }
 
   // ABeta 1-42	                <200 >1700
@@ -439,6 +441,7 @@ object FeatureConstruction {
     /** save for later usage */
     feature.cache()
     //val scFeature = sc.broadcast(feature) //So we need this?
+
 
     /** create a feature name to id map*/
 
@@ -516,8 +519,34 @@ object FeatureConstruction {
     /** save for later usage */
     feature.cache()
 
+    // add log
+    val featureLog = feature.flatMap { s =>
+      if (s._2 > 0) Seq(((s._1._1, s._1._2.concat("Log")), math.log(s._2)))
+      else Seq()
+    }
+
+    // add sq
+/*    val featureSq = feature.flatMap { s =>
+      if (s._2 > 0) Seq(((s._1._1, s._1._2.concat("Sq")), s._2*s._2))
+      else Seq()
+    }*/
+
+    // val featureAll = feature.union(featureLog).union(featureSq)
+
+
+    val featureAll = feature.union(featureLog)
+
+    val featureMax = featureAll.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.max))
+    val featureNorm = featureAll.map(s=>(s._1._2, (s._1._1, s._2))).join(featureMax).
+      map{s=>
+        if (s._2._2 == 0) ((s._2._1._1, s._1), 0.0)
+        else ((s._2._1._1, s._1), s._2._1._2/s._2._2.toString.toDouble)}
+
+
+
+
     // Generate training data for SKlearn
-    val featureID = feature.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
+    val featureID = featureNorm.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
 
     import scala.collection.immutable.ListMap
     println("Feature Map")
@@ -537,7 +566,7 @@ object FeatureConstruction {
     }
 
 
-    val temp = feature.map(s=>(s._1._1, (s._1._2, s._2))).groupByKey().map{s=>
+    val temp = featureNorm.map(s=>(s._1._1, (s._1._2, s._2))).groupByKey().map{s=>
       val indexedFeatures = s._2.toList.map(s=>(featureID(s._1),s._2))
       (s._1, indexedFeatures)
     }
