@@ -550,8 +550,8 @@ object FeatureConstruction {
 
     val featureNorm = featureAll.map(s=>(s._1._2, (s._1._1, s._2))).join(featureRangeMin).
       map{s=>
-        if (s._2._2._2 == 0) ((s._2._1._1, s._1), 0.0)
-        else ((s._2._1._1, s._1), (s._2._1._2-s._2._2._1.toString.toDouble)/s._2._2._2.toString.toDouble)}
+        if (s._2._2._1 == 0) ((s._2._1._1, s._1), 0.0)
+        else ((s._2._1._1, s._1), (s._2._1._2-s._2._2._2.toString.toDouble)/s._2._2._1.toString.toDouble)}
 
 
 
