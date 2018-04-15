@@ -481,6 +481,13 @@ object FeatureConstruction {
     feature.cache()
     //val scFeature = sc.broadcast(feature) //So we need this?
 
+
+    val featureLog = feature.flatMap { s =>
+      if (s._2 > 0) Seq(((s._1._1, s._1._2.concat("Log")), math.log(s._2)))
+      else Seq()
+    }
+
+
     /** create a feature name to id map*/
 
     val featureID = feature.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
@@ -520,6 +527,7 @@ object FeatureConstruction {
     feature.cache()
 
     // add log
+
     val featureLog = feature.flatMap { s =>
       if (s._2 > 0) Seq(((s._1._1, s._1._2.concat("Log")), math.log(s._2)))
       else Seq()
@@ -537,10 +545,13 @@ object FeatureConstruction {
     val featureAll = feature.union(featureLog)
 
     val featureMax = featureAll.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.max))
-    val featureNorm = featureAll.map(s=>(s._1._2, (s._1._1, s._2))).join(featureMax).
+    val featureMin = featureAll.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.min))
+    val featureRangeMin = featureMax.join(featureMin).map(s=>(s._1, (s._2._1-s._2._2, s._2._2)))
+
+    val featureNorm = featureAll.map(s=>(s._1._2, (s._1._1, s._2))).join(featureRangeMin).
       map{s=>
-        if (s._2._2 == 0) ((s._2._1._1, s._1), 0.0)
-        else ((s._2._1._1, s._1), s._2._1._2/s._2._2.toString.toDouble)}
+        if (s._2._2._2 == 0) ((s._2._1._1, s._1), 0.0)
+        else ((s._2._1._1, s._1), (s._2._1._2-s._2._2._1.toString.toDouble)/s._2._2._2.toString.toDouble)}
 
 
 

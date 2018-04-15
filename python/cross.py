@@ -44,8 +44,8 @@ def get_acc_auc_kfold(X,Y,algo="logistic regression",k=5, n_components=110):
     recall_list = []
     
     for train_idx, test_idx in kf:
-        X_train, X_test = PC_analysis(X[train_idx], X[test_idx], n_components) # PCA
-        # X_train, X_test = X[train_idx], X[test_idx] # without PCA
+        # X_train, X_test = PC_analysis(X[train_idx], X[test_idx], n_components) # PCA
+        X_train, X_test = X[train_idx], X[test_idx] # without PCA
         if algo == "logistic regression":
             Y_pred = models_partc.logistic_regression_pred(X_train,Y[train_idx],X_test)
         elif algo == "linear_svm":
@@ -113,62 +113,62 @@ def get_acc_auc_kfold(X,Y,algo="logistic regression",k=5, n_components=110):
 
 def main():
     
-#    for algo in ["logistic regression", "linear_svm", "decision_tree", "ada boost", "bagging logistic", "bagging_svm"]:
-#    # for algo in ["logistic regression"]:
-#        X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS_log.train", n_features=350)
-#        print 
-#        print "Without UPDRS"
-#        print "Classifier:", algo, "__________"
-#        acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo)
-#        print acc_k
-#        print auc_k
-#        print precision_k
-#        print recall_k
-#
-##        print "Average Accuracy in KFold CV: "+str(acc_k)
-##        print "Average AUC in KFold CV: "+str(auc_k)
-##        print "Average Precision Score in KFold CV: "+str(precision_k)
-##        print "Average Recall Score in KFold CV: "+str(recall_k)
-# 
-#        X,Y = utils.get_data_from_svmlight("../scala/output/withUPDRS_log.train", n_features=350)
-#        print "With UPDRS"
-#        print "Classifier:", algo, "__________"
-#        acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo)
-#        print acc_k
-#        print auc_k
-#        print precision_k
-#        print recall_k
-        
+   for algo in ["logistic regression", "linear_svm", "decision_tree", "ada boost", "bagging logistic", "bagging_svm"]:
+   # for algo in ["logistic regression"]:
+       X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS.train", n_features=400)
+       print 
+       print "Without UPDRS"
+       print "Classifier:", algo, "__________"
+       acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo)
+       print acc_k
+       print auc_k
+       print precision_k
+       print recall_k
+
 #        print "Average Accuracy in KFold CV: "+str(acc_k)
 #        print "Average AUC in KFold CV: "+str(auc_k)
 #        print "Average Precision Score in KFold CV: "+str(precision_k)
 #        print "Average Recall Score in KFold CV: "+str(recall_k)
-  
-    for algo in ["logistic regression", "linear_svm", "decision_tree"]:
-        without_updrs = []
-        with_updrs = []
-        # n_components = np.arange(10, 340, 10)
-        n_components = np.arange(5, 140, 5)
-        for n in n_components:
-            X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS_log_picked.train", n_features=350)
-            acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo,k=5, n_components=n)
-            without_updrs.append(acc_k)
-            
-            X,Y = utils.get_data_from_svmlight("../scala/output/withUPDRS_log_picked.train", n_features=350)
-            acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo,k=5, n_components=n)
-            with_updrs.append(acc_k)
+
+       X,Y = utils.get_data_from_svmlight("../scala/output/withUPDRS.train", n_features=400)
+       print "With UPDRS"
+       print "Classifier:", algo, "__________"
+       acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo)
+       print acc_k
+       print auc_k
+       print precision_k
+       print recall_k
         
-        print "Classifier:", algo, "__________"
-        # print "Without UPDRS"
-        print np.argmax(without_updrs), np.max(without_updrs)
-        # print "With UPDRS"
-        print np.argmax(with_updrs), np.max(with_updrs)
-        plt.plot(n_components, without_updrs, label=algo+' without_updrs')
-        plt.plot(n_components, with_updrs, label=algo+' with_updrs')
-    plt.xlabel('nb of components')
-    plt.ylabel('ACC')
-    plt.legend(loc='lower right')  
-    plt.show()
+       # print "Average Accuracy in KFold CV: "+str(acc_k)
+       # print "Average AUC in KFold CV: "+str(auc_k)
+       # print "Average Precision Score in KFold CV: "+str(precision_k)
+       # print "Average Recall Score in KFold CV: "+str(recall_k)
+  
+    # for algo in ["logistic regression", "linear_svm", "decision_tree"]:
+    #     without_updrs = []
+    #     with_updrs = []
+    #     # n_components = np.arange(10, 340, 10)
+    #     n_components = np.arange(5, 140, 5)
+    #     for n in n_components:
+    #         X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS.train", n_features=400)
+    #         acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo,k=5, n_components=n)
+    #         without_updrs.append(acc_k)
+            
+    #         X,Y = utils.get_data_from_svmlight("../scala/output/withUPDRS.train", n_features=400)
+    #         acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo,k=5, n_components=n)
+    #         with_updrs.append(acc_k)
+        
+    #     print "Classifier:", algo, "__________"
+    #     # print "Without UPDRS"
+    #     print np.argmax(without_updrs), np.max(without_updrs)
+    #     # print "With UPDRS"
+    #     print np.argmax(with_updrs), np.max(with_updrs)
+    #     plt.plot(n_components, without_updrs, label=algo+' without_updrs')
+    #     plt.plot(n_components, with_updrs, label=algo+' with_updrs')
+    # plt.xlabel('nb of components')
+    # plt.ylabel('ACC')
+    # plt.legend(loc='lower right')  
+    # plt.show()
         
 #    X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS.train")
 #    print "Without UPDRS"
