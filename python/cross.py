@@ -58,6 +58,8 @@ def get_acc_auc_kfold(X,Y,algo="logistic regression",k=5, n_components=110):
             Y_pred = models_partc.bagging_log_pred(X_train,Y[train_idx],X_test)
         elif algo == "bagging_svm":
             Y_pred = models_partc.bagging_SVC_pred(X_train,Y[train_idx],X_test)
+        elif algo == "neural_network":
+            Y_pred = models_partc.neural_network(X_train, Y[train_idx], X_test)
         acc, auc_, precision, recall, f1score = models_partc.classification_metrics(Y_pred,Y[test_idx]) 
         acc_list.append(acc)
         auc_list.append(auc_)
@@ -113,8 +115,8 @@ def get_acc_auc_kfold(X,Y,algo="logistic regression",k=5, n_components=110):
 
 def main():
     
-   for algo in ["logistic regression", "linear_svm", "decision_tree", "ada boost", "bagging logistic", "bagging_svm"]:
-   # for algo in ["logistic regression"]:
+   #for algo in ["logistic regression", "linear_svm", "decision_tree", "ada boost", "bagging logistic", "bagging_svm", "neural_network"]:
+   for algo in ["neural_network"]:
        X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS.train", n_features=400)
        print 
        print "Without UPDRS"

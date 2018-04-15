@@ -4,7 +4,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score,roc_auc_score
-
+from sklearn.neural_network import MLPClassifier
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import TruncatedSVD
 from sklearn.ensemble import BaggingClassifier, AdaBoostClassifier
@@ -90,6 +90,14 @@ def bagging_SVC_pred(X_train, Y_train, X_test):
     Y_pred = bagging.predict(X_test)
 
     return Y_pred
+
+def neural_network(X_train, Y_train, X_test):
+    neural_network = MLPClassifier(max_iter=500, learning_rate='adaptive')
+    neural_network.fit(X_train, Y_train)
+    Y_pred = neural_network.predict(X_test)
+    return Y_pred
+
+
 
 
 #input: Y_pred,Y_true
