@@ -7,7 +7,7 @@ package edu.gatech.cse8803.main
 import java.text.{NumberFormat, SimpleDateFormat}
 
 import edu.gatech.cse8803.clustering.{Metrics, NMF}
-import edu.gatech.cse8803.features.FeatureConstruction
+import edu.gatech.cse8803.features.{FeatureConstruction, FeatureConstructionLSTM}
 import edu.gatech.cse8803.ioutils.CSVUtils
 import edu.gatech.cse8803.model._
 import edu.gatech.cse8803.statistics.statistics.printStatistics
@@ -69,12 +69,44 @@ object Main {
       FeatureConstruction.constructMoCARDDFeatureTuple(moCARDD)
     )
 
-    /** feature construction with all features */
+    /** feature construction with all features*/
     val featureTuplesWithUPDRS = sc.union(
       featureTuplesWithoutUPDRS,
       FeatureConstruction.constructUpdrsIRDDFeatureTuple(updrsIRDD),
       FeatureConstruction.constructUpdrsIIRDDFeatureTuple(updrsIIRDD),
       FeatureConstruction.constructUpdrsIIIRDDFeatureTuple(updrsIIIRDD) // New
+    )
+
+    /** feature construction with all features except UPDRS for LSTM */
+    val featureTuplesWithoutUPDRSForLSTM = sc.union(
+      FeatureConstructionLSTM.constructSocEcoFeatureTuple(socEcoRDD),
+      FeatureConstructionLSTM.constructScDemogrFeatureTuple(scDemogrRDD),
+      FeatureConstructionLSTM.constructFamHistFeatureTuple(famHistRDD), // New
+      FeatureConstructionLSTM.constructBioChemRDDFeatureTuple(bioChemRDD),
+      FeatureConstructionLSTM.constructDatScanRDDFeatureTuple(datScanRDD),
+
+      FeatureConstructionLSTM.constructQuipRDDFeatureTuple(quipRDD), //new
+      FeatureConstructionLSTM.constructHvltRDDFeatureTuple(hvltRDD), //new
+      FeatureConstructionLSTM.constructBLineRDDFeatureTuple(bLineRDD), //new
+      FeatureConstructionLSTM.constructSemaFlutRDDFeatureTuple(semaFlutRDD), //new
+      FeatureConstructionLSTM.constructLnSeqRDDFeatureTuple(lnSeqRDD), //new
+      FeatureConstructionLSTM.constructSdModRDDFeatureTuple(sdModRDD), //new
+      FeatureConstructionLSTM.constructEssRDDFeatureTuple(essRDD), //new
+      FeatureConstructionLSTM.constructStaiRDDFeatureTuple(staiRDD), //new
+      FeatureConstructionLSTM.constructGdsRDDFeatureTuple(gdsRDD), //new
+      FeatureConstructionLSTM.constructScopaRDDFeatureTuple(scopaRDD), //new
+
+      FeatureConstructionLSTM.constructUpsitRDDFeatureTuple(upsitRDD),
+      FeatureConstructionLSTM.constructRemRDDFeatureTuple(remRDD),
+      FeatureConstructionLSTM.constructMoCARDDFeatureTuple(moCARDD)
+    )
+
+    /** feature construction with all features for LSTM*/
+    val featureTuplesWithUPDRSForLSTM = sc.union(
+      featureTuplesWithoutUPDRSForLSTM,
+      FeatureConstructionLSTM.constructUpdrsIRDDFeatureTuple(updrsIRDD),
+      FeatureConstructionLSTM.constructUpdrsIIRDDFeatureTuple(updrsIIRDD),
+      FeatureConstructionLSTM.constructUpdrsIIIRDDFeatureTuple(updrsIIIRDD) // New
     )
 
 
@@ -87,8 +119,12 @@ object Main {
 
 
 //
-    FeatureConstruction.saveFeatures(sc, featureTuplesWithUPDRS, phenotypeLabel, 1) // withUPDRS == 1
-    FeatureConstruction.saveFeatures(sc, featureTuplesWithoutUPDRS, phenotypeLabel, 0)  // withoutUPDRS == 0
+    // FeatureConstruction.saveFeatures(sc, featureTuplesWithUPDRS, phenotypeLabel, 1) // withUPDRS == 1
+    // FeatureConstruction.saveFeatures(sc, featureTuplesWithoutUPDRS, phenotypeLabel, 0)  // withoutUPDRS == 0
+
+    // for LSTM
+    FeatureConstructionLSTM.saveFeatures(sc, featureTuplesWithUPDRSForLSTM, phenotypeLabel, 1) // withUPDRS == 1
+    FeatureConstructionLSTM.saveFeatures(sc, featureTuplesWithoutUPDRSForLSTM, phenotypeLabel, 0)  // withoutUPDRS == 0
 
 
     // val (kMeansPurity, gaussianMixturePurity, streamKmeansPurity, nmfPurity) = testClustering(phenotypeLabel, rawFeaturesWithoutUPDRS)
@@ -206,8 +242,7 @@ object Main {
       map(s=>(s._1, s._2, s._4/s._3))
 
     val famHistRDD = famHist.map(s=>HIST(s._1,s._2,s._3)).
-      filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="SC")
+      filter(s=>allPatientsID.contains(s.patientID))
 
 
     /**_Biospecimen*/
@@ -220,7 +255,6 @@ object Main {
     /** All features in Biospecimen*/
 
     val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString, s(4).toString.toLowerCase(), s(5).toString.toLowerCase(),s(6).toString, s(7).toString)).
-      filter(s=>s.eventID=="BL"||s.eventID=="SC").
       filter(s=>allPatientsID.contains(s.patientID))
 
 /*    bioChemRDD.map(s=>((s.testType, s.testName), s.value.toString)).filter(s=> ! s._2.matches("[-+]?[0-9]*\\.?[0-9]*")).
@@ -232,7 +266,6 @@ object Main {
 
     val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString, s(4).toString.toLowerCase(), s(5).toString.toLowerCase(), s(6), s(7).toString)).
       filter(s=>bioChemFeatures.contains(s.testName)).
-      filter(s=>s.eventID=="BL"||s.eventID=="SC").
       filter(s=>allPatientsID.contains(s.patientID))*/
 
 
@@ -251,7 +284,7 @@ object Main {
         val putamenAsym = 100*(s(4).toString.toDouble - s(5).toString.toDouble)/putamen
         (s(0).toString, s(1).toString, caudate, putamen, caudate/putamen, caudateAsym, putamenAsym)}
 
-    val datScanRDD = datScan.map(s=>DATSCAN(s._1,s._2,s._3,s._4,s._5,s._6,s._7)).filter(s=>allPatientsID.contains(s.patientID)).filter(s=>s.eventID=="SC")
+    val datScanRDD = datScan.map(s=>DATSCAN(s._1,s._2,s._3,s._4,s._5,s._6,s._7)).filter(s=>allPatientsID.contains(s.patientID))
 
 
     /**Non-motor_Assessments*/
@@ -286,8 +319,7 @@ object Main {
         s(5).toString.toInt/List(s(3), s(4)).map(_.toString.toInt).max))
 
     val hvltRDD = hvlt.map(s=>HVLT(s._1,s._2,s._3,s._4, s._5)).
-      filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+      filter(s=>allPatientsID.contains(s.patientID))
 
 
     /*Benton_Judgment_of_Line_Orientation
@@ -298,8 +330,7 @@ object Main {
       map(s=>(s(0).toString, s(1).toString, s(2).toString)).filter(s=> !(s._3==""))
 
     val bLineRDD = bLine.map(s=>BLINE(s._1, s._2, s._3.toDouble)).
-      filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+      filter(s=>allPatientsID.contains(s.patientID))
 
 
     /**Semantic_Fluency*/
@@ -309,8 +340,7 @@ object Main {
       map(s=>(s(0).toString, s(1).toString, List(s(2), s(3), s(4)).map(_.toString.toInt).sum, s(5).toString.toInt, s(6).toString.toInt))
 
     val semaFlutRDD = semaFlut.map(s=>SFT(s._1, s._2, s._3, s._4, s._5)).
-      filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+      filter(s=>allPatientsID.contains(s.patientID))
 
 
     /** Letter Number Sequencing */
@@ -320,8 +350,7 @@ object Main {
       map(s=>(s(0).toString, s(1).toString, s(2).toString.toInt, s(3).toString.toInt))
 
     val lnSeqRDD = lnSeq.map(s=>LNSEQ(s._1, s._2, s._3, s._4)).
-      filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+      filter(s=>allPatientsID.contains(s.patientID))
 
 
     /** Symbol_Digit_Modalities */
@@ -331,8 +360,7 @@ object Main {
       map(s=>(s(0).toString, s(1).toString, s(2).toString.toInt, s(3).toString.toDouble))
 
     val sdModRDD = sdMod.map(s=>SDMOD(s._1, s._2, s._3, s._4)).
-      filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+      filter(s=>allPatientsID.contains(s.patientID))
 
 
     /** Epworth_Sleepiness_Scale
@@ -346,8 +374,7 @@ object Main {
       filter(s=> ! s._3.contains("")).
       map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
 
-    val essRDD = ess.map(s=>ESS(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+    val essRDD = ess.map(s=>ESS(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID))
 
 
     /** State-Trait_Anxiety_Inventory
@@ -371,8 +398,7 @@ object Main {
         s._3.map(_.toInt).sum + s._4.length*5 - s._4.map(_.toInt).sum,
         s._5.map(_.toInt).sum + s._6.length*5 - s._6.map(_.toInt).sum))
 
-    val staiRDD = stai.map(s=>STAI(s._1,s._2,s._3+s._4, s._3, s._4)).filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+    val staiRDD = stai.map(s=>STAI(s._1,s._2,s._3+s._4, s._3, s._4)).filter(s=>allPatientsID.contains(s.patientID))
 
 
     /** Geriatric Depression Scale (GDS)
@@ -390,8 +416,7 @@ object Main {
         s._3.map(_.toInt).sum,
         s._4.length - s._4.map(_.toInt).sum))
 
-    val gdsRDD = gds.map(s=>GDS(s._1,s._2, s._3 + s._4)).filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+    val gdsRDD = gds.map(s=>GDS(s._1,s._2, s._3 + s._4)).filter(s=>allPatientsID.contains(s.patientID))
 
 
     /** SCOPA-AUT Total Score
@@ -429,8 +454,7 @@ object Main {
         if (s._9.contains("")) s._8.map(_.toInt).sum else s._9.map(_.toInt).sum)).
       map(s=>(s._1, s._2, List(s._3, s._4, s._5, s._6, s._7, s._8).sum))
 
-    val scopaRDD = scopa.map(s=>SCOPA(s._1, s._2, s._3)).filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL")
+    val scopaRDD = scopa.map(s=>SCOPA(s._1, s._2, s._3)).filter(s=>allPatientsID.contains(s.patientID))
 
 
 /*    val upsit0 = CSVUtils.loadCSVAsTable(sqlContext,"data/University_of_Pennsylvania_Smell_ID_Test.csv").
@@ -458,8 +482,7 @@ object Main {
       filter(s=> ! s._3.contains("")).
       map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
 
-    val remRDD = rem.map(s=>REM(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID)).
-      filter(s=>s.eventID=="BL"||s.eventID=="SC")
+    val remRDD = rem.map(s=>REM(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID))
 
 
     /*Montreal_Cognitive_Assessment*/
@@ -467,7 +490,6 @@ object Main {
       toDF().select("PATNO","EVENT_ID","MCATOT").cache()
 
     val moCARDD = moCA.filter(moCA("MCATOT")!== "").map(s=>MOCA(s(0).toString,s(1).toString, s(2).toString.toInt)).
-      filter(s=>s.eventID=="BL"||s.eventID=="SC").
       filter(s=>allPatientsID.contains(s.patientID))
 
 
@@ -477,17 +499,17 @@ object Main {
 
     val updrsI1 = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_I__Patient_Questionnaire.csv").
       toDF().rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13)).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).map(s=>((s._1, s._2), s._3))
 
     val updrsI2 = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_I.csv").
       toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12)).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).map(s=>((s._1, s._2), s._3))
 
-    val updrsI = updrsI1.join(updrsI2).map(s=>(s._1, s._2._1+s._2._2))
+    val updrsI = updrsI1.join(updrsI2).map(s=>(s._1._1, s._1._2, s._2._1+s._2._2))
 
     val updrsII = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_II__Patient_Questionnaire.csv").
       toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString, List(s(7), s(8), s(9), s(10), s(11), s(12), s(13), s(14), s(15), s(16), s(17), s(18), s(19)).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
 
     val updrsIII = CSVUtils.loadCSVAsTable(sqlContext,"data/MDS_UPDRS_Part_III__Post_Dose_.csv").
       toDF().cache().rdd.map(s=>(s(2).toString, s(3).toString, List(s(8), s(9), s(10),
@@ -495,13 +517,11 @@ object Main {
       s(21), s(22), s(23), s(24), s(25), s(26), s(27), s(28), s(29), s(30),
       s(31), s(32), s(33), s(34), s(35), s(36), s(37), s(38), s(39), s(40)
     ).map(_.toString))).
-      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum)).filter(s=>s._2=="BL").map(s=>(s._1, s._3))
+      filter(s=> ! s._3.contains("")).map(s=>(s._1, s._2, s._3.map(_.toInt).sum))
 
-    val updrsIRDD = updrsI.map(s=>UPDRS(s._1,s._2)).filter(s=>allPatientsID.contains(s.patientID))
-    val updrsIIRDD = updrsII.map(s=>UPDRS(s._1,s._2)).filter(s=>allPatientsID.contains(s.patientID))
-    val updrsIIIRDD = updrsIII.map(s=>UPDRS(s._1,s._2)).filter(s=>allPatientsID.contains(s.patientID))
-
-
+    val updrsIRDD = updrsI.map(s=>UPDRS(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID))
+    val updrsIIRDD = updrsII.map(s=>UPDRS(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID))
+    val updrsIIIRDD = updrsIII.map(s=>UPDRS(s._1,s._2,s._3)).filter(s=>allPatientsID.contains(s.patientID))
 
 
 
@@ -510,8 +530,6 @@ object Main {
       upsitRDD, remRDD, moCARDD, updrsIRDD, updrsIIRDD, updrsIIIRDD, patientsWithLabel)
 
   }
-
-
 
 
 

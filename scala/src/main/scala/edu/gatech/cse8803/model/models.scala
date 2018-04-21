@@ -20,7 +20,7 @@ case class REM(patientID:String, eventID: String, Score: Int)
 
 case class MOCA(patientID:String, eventID: String, Score: Int)
 
-case class UPDRS(patientID:String, Score: Int)
+case class UPDRS(patientID:String, eventID: String, Score: Int)
 
 case class QUIP(patientID:String, eventID: String, Score: Int)
 

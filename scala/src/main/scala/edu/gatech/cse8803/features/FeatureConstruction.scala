@@ -42,7 +42,8 @@ object FeatureConstruction {
 
 
   def constructFamHistFeatureTuple(famHistRDD: RDD[HIST]): RDD[FeatureTuple] = {
-    val featureTuples = famHistRDD.map(s=>((s.patientID, "familyHistory"),s.Score))
+    val featureTuples = famHistRDD.
+      filter(s=>s.eventID=="SC").map(s=>((s.patientID, "familyHistory"),s.Score))
     featureTuples
   }
 
@@ -54,11 +55,12 @@ object FeatureConstruction {
    * @return RDD of feature tuples
    */
   def constructDatScanRDDFeatureTuple(datScanRDD: RDD[DATSCAN]): RDD[FeatureTuple] = {
-    val featureTuples_C = datScanRDD.map(s=>((s.patientID, "CAUDATE"), s.CAUDATE))
-    val featureTuples_P = datScanRDD.map(s=>((s.patientID, "PUTAMEN"), s.PUTAMEN))
-    val featureTuples_R = datScanRDD.map(s=>((s.patientID, "CAUDATE_PUTAMEN_ratio"), s.cpRatio))
-    val featureTuples_CA = datScanRDD.map(s=>((s.patientID, "CAUDATE_Asym"), s.caudateAsym))
-    val featureTuples_PA = datScanRDD.map(s=>((s.patientID, "PUTAMEN_Asym"), s.putamenAsym))
+    val datScanRDDSc = datScanRDD.filter(s=>s.eventID=="SC")
+    val featureTuples_C = datScanRDDSc.map(s=>((s.patientID, "CAUDATE"), s.CAUDATE))
+    val featureTuples_P = datScanRDDSc.map(s=>((s.patientID, "PUTAMEN"), s.PUTAMEN))
+    val featureTuples_R = datScanRDDSc.map(s=>((s.patientID, "CAUDATE_PUTAMEN_ratio"), s.cpRatio))
+    val featureTuples_CA = datScanRDDSc.map(s=>((s.patientID, "CAUDATE_Asym"), s.caudateAsym))
+    val featureTuples_PA = datScanRDDSc.map(s=>((s.patientID, "PUTAMEN_Asym"), s.putamenAsym))
     featureTuples_C.union(featureTuples_P).union(featureTuples_R).union(featureTuples_CA).union(featureTuples_PA)
   }
 
@@ -70,9 +72,10 @@ object FeatureConstruction {
   }
 
   def constructHvltRDDFeatureTuple(hvltRDD: RDD[HVLT]): RDD[FeatureTuple] = {
-    val featureTuples_I = hvltRDD.map(s=>((s.patientID, "HVLT_immediateScore"), s.immediateScore.toDouble))
-    val featureTuples_D = hvltRDD.map(s=>((s.patientID, "HVLT_discrimScore"), s.discrimScore.toDouble))
-    val featureTuples_R = hvltRDD.map(s=>((s.patientID, "HVLT_retentScore"), s.retentScore))
+    val hvltRDDBL = hvltRDD.filter(s=>s.eventID=="BL")
+    val featureTuples_I = hvltRDDBL.map(s=>((s.patientID, "HVLT_immediateScore"), s.immediateScore.toDouble))
+    val featureTuples_D = hvltRDDBL.map(s=>((s.patientID, "HVLT_discrimScore"), s.discrimScore.toDouble))
+    val featureTuples_R = hvltRDDBL.map(s=>((s.patientID, "HVLT_retentScore"), s.retentScore))
     featureTuples_I.union(featureTuples_D).union(featureTuples_R)
   }
 
@@ -83,21 +86,22 @@ object FeatureConstruction {
   }
 
   def constructSemaFlutRDDFeatureTuple(semaFlutRDD: RDD[SFT]): RDD[FeatureTuple] = {
-    val featureTuples_S = semaFlutRDD.map(s=>((s.patientID, "SemaFlut_sumScore"), s.sumScore.toDouble))
-    val featureTuples_DT = semaFlutRDD.map(s=>((s.patientID, "SemaFlut_derivedScaled"), s.derivedSemScaled.toDouble))
-    val featureTuples_DS = semaFlutRDD.map(s=>((s.patientID, "SemaFlut_derivedT"), s.derivedSemT.toDouble))
+    val semaFlutRDDBL = semaFlutRDD.filter(s=>s.eventID=="BL")
+    val featureTuples_S = semaFlutRDDBL.map(s=>((s.patientID, "SemaFlut_sumScore"), s.sumScore.toDouble))
+    val featureTuples_DT = semaFlutRDDBL.map(s=>((s.patientID, "SemaFlut_derivedScaled"), s.derivedSemScaled.toDouble))
+    val featureTuples_DS = semaFlutRDDBL.map(s=>((s.patientID, "SemaFlut_derivedT"), s.derivedSemT.toDouble))
     featureTuples_S.union(featureTuples_DT).union(featureTuples_DS)
   }
 
   def constructLnSeqRDDFeatureTuple(lnSeqRDD: RDD[LNSEQ]): RDD[FeatureTuple] = {
-    val featureTuples_S = lnSeqRDD.map(s=>((s.patientID, "LnSeq_Score"), s.Score.toDouble))
-    val featureTuples_DS = lnSeqRDD.map(s=>((s.patientID, "LnSeq_derivedScore"), s.derivedScore.toDouble))
+    val featureTuples_S = lnSeqRDD.filter(s=>s.eventID=="BL").map(s=>((s.patientID, "LnSeq_Score"), s.Score.toDouble))
+    val featureTuples_DS = lnSeqRDD.filter(s=>s.eventID=="BL").map(s=>((s.patientID, "LnSeq_derivedScore"), s.derivedScore.toDouble))
     featureTuples_S.union(featureTuples_DS)
   }
 
   def constructSdModRDDFeatureTuple(sdModRDD: RDD[SDMOD]): RDD[FeatureTuple] = {
-    val featureTuples_S = sdModRDD.map(s=>((s.patientID, "SdMod_Score"), s.Score.toDouble))
-    val featureTuples_DT = sdModRDD.map(s=>((s.patientID, "SdMod_derivedTScore"), s.derivedTScore.toDouble))
+    val featureTuples_S = sdModRDD.filter(s=>s.eventID=="BL").map(s=>((s.patientID, "SdMod_Score"), s.Score.toDouble))
+    val featureTuples_DT = sdModRDD.filter(s=>s.eventID=="BL").map(s=>((s.patientID, "SdMod_derivedTScore"), s.derivedTScore.toDouble))
     featureTuples_S.union(featureTuples_DT)
   }
 
@@ -107,14 +111,15 @@ object FeatureConstruction {
   }
 
   def constructStaiRDDFeatureTuple(staiRDD: RDD[STAI]): RDD[FeatureTuple] = {
-    val featureTuples_S = staiRDD.map(s=>((s.patientID, "STAI_Score"), s.Score.toDouble))
-    val featureTuples_SS = staiRDD.map(s=>((s.patientID, "STAI_stateScore"), s.stateScore.toDouble))
-    val featureTuples_TS = staiRDD.map(s=>((s.patientID, "STAI_traitScore"), s.traitScore.toDouble))
+    val staiRDDBL = staiRDD.filter(s=>s.eventID=="BL")
+    val featureTuples_S = staiRDDBL.map(s=>((s.patientID, "STAI_Score"), s.Score.toDouble))
+    val featureTuples_SS = staiRDDBL.map(s=>((s.patientID, "STAI_stateScore"), s.stateScore.toDouble))
+    val featureTuples_TS = staiRDDBL.map(s=>((s.patientID, "STAI_traitScore"), s.traitScore.toDouble))
     featureTuples_S.union(featureTuples_SS).union(featureTuples_TS)
   }
 
   def constructGdsRDDFeatureTuple(gdsRDD: RDD[GDS]): RDD[FeatureTuple] = {
-    val featureTuples = gdsRDD.map(s => ((s.patientID, "Gds_Score"), s.Score.toDouble))
+    val featureTuples = gdsRDD.filter(s=>s.eventID=="BL").map(s => ((s.patientID, "Gds_Score"), s.Score.toDouble))
     featureTuples
   }
 
@@ -144,7 +149,7 @@ object FeatureConstruction {
     */
 
   def constructRemRDDFeatureTuple(remRDD: RDD[REM]): RDD[FeatureTuple] = {
-    val featureTuples = remRDD.map(s=>((s.patientID, "REM"), s.Score.toDouble))
+    val featureTuples = remRDD.filter(s=>s.eventID=="BL"||s.eventID=="SC").map(s=>((s.patientID, "REM"), s.Score.toDouble))
     featureTuples
   }
 
@@ -156,22 +161,22 @@ object FeatureConstruction {
 
 
   def constructMoCARDDFeatureTuple(moCARDD: RDD[MOCA]): RDD[FeatureTuple] = {
-    val featureTuples = moCARDD.map(s=>((s.patientID, "MoCA"), s.Score.toDouble))
+    val featureTuples = moCARDD.filter(s=>s.eventID=="BL"||s.eventID=="SC").map(s=>((s.patientID, "MoCA"), s.Score.toDouble))
     featureTuples
   }
 
   def constructUpdrsIRDDFeatureTuple(updrsIRDD: RDD[UPDRS]): RDD[FeatureTuple] = {
-    val featureTuples = updrsIRDD.map(s=>((s.patientID, "UPDRSI"), s.Score.toDouble))
+    val featureTuples = updrsIRDD.filter(s=>s.eventID=="BL").map(s=>((s.patientID, "UPDRSI"), s.Score.toDouble))
     featureTuples
   }
 
   def constructUpdrsIIRDDFeatureTuple(updrsIIRDD: RDD[UPDRS]): RDD[FeatureTuple] = {
-    val featureTuples = updrsIIRDD.map(s=>((s.patientID, "UPDRSII"), s.Score.toDouble))
+    val featureTuples = updrsIIRDD.filter(s=>s.eventID=="BL").map(s=>((s.patientID, "UPDRSII"), s.Score.toDouble))
     featureTuples
   }
 
   def constructUpdrsIIIRDDFeatureTuple(updrsIIIRDD: RDD[UPDRS]): RDD[FeatureTuple] = {
-    val featureTuples = updrsIIIRDD.map(s=>((s.patientID, "UPDRSIII"), s.Score.toDouble))
+    val featureTuples = updrsIIIRDD.filter(s=>s.eventID=="BL").map(s=>((s.patientID, "UPDRSIII"), s.Score.toDouble))
     featureTuples
   }
 
@@ -213,7 +218,7 @@ object FeatureConstruction {
       else ((s.patientID, s.testName), s.value.toString.toDouble)
     )*/
 
-    val featureTuples = bioChemRDD.flatMap{ s =>
+    val featureTuples = bioChemRDD.filter(s=>s.eventID=="BL"||s.eventID=="SC").flatMap{ s =>
       if (s.testName == "ptau" && s.value == "<8") Seq(((s.patientID, s.testName), 8.0))
       else if (s.testName == "ttau" && s.value == "<80") Seq(((s.patientID, s.testName), 80.0))
       else if (s.testName == "abeta 1-42" && s.value== "<200") Seq(((s.patientID, s.testName), 200.0))
@@ -546,15 +551,28 @@ object FeatureConstruction {
 
     val featureMax = featureAll.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.max))
     val featureMin = featureAll.map(s=>(s._1._2, s._2)).groupByKey().map(s=>(s._1, s._2.min))
-    val featureRangeMin = featureMax.join(featureMin).map(s=>(s._1, (s._2._1-s._2._2, s._2._2)))
 
+    val featureRangeMin = featureMax.join(featureMin).map(s=>(s._1, (s._2._1-s._2._2, s._2._2)))
     val featureNorm = featureAll.map(s=>(s._1._2, (s._1._1, s._2))).join(featureRangeMin).
       map{s=>
         if (s._2._2._1 == 0) ((s._2._1._1, s._1), 0.0)
         else ((s._2._1._1, s._1), (s._2._1._2-s._2._2._2.toString.toDouble)/s._2._2._1.toString.toDouble)}
 
 
+//    val featureMaxMin = featureMax.join(featureMin).map(s=>(s._1, (s._2._1, s._2._2)))
+//    val featureNorm = featureAll.map(s=>(s._1._2, (s._1._1, s._2))).join(featureMaxMin).
+//      map{s=>
+//        val range = s._2._2._1.toString.toDouble-s._2._2._2.toString.toDouble
+//        if (s._2._2._1 == 0) ((s._2._1._1, s._1), 0.0)
+//        else if (s._2._2._2.toString.toDouble<0) ((s._2._1._1, s._1), (s._2._1._2-s._2._2._2.toString.toDouble)/range)
+//        else ((s._2._1._1, s._1), s._2._1._2/s._2._2._1.toString.toDouble)}
 
+//    val featureNorm = featureAll.map(s=>(s._1._2, (s._1._1, s._2))).join(featureMax).
+//      map{s=>
+//        if (s._2._2 == 0) ((s._2._1._1, s._1), 0.0)
+//        else ((s._2._1._1, s._1), s._2._1._2/s._2._2.toString.toDouble)}
+
+//    val featureNorm = featureAll
 
     // Generate training data for SKlearn
     val featureID = featureNorm.map(s=>s._1._2).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
