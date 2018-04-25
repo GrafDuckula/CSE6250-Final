@@ -115,9 +115,9 @@ def get_acc_auc_kfold(X,Y,algo="logistic regression",k=5, n_components=110):
 
 def main():
     
-   # for algo in ["logistic regression", "linear_svm", "decision_tree", "ada boost", "bagging logistic", "bagging_svm", "neural_network"]:
-   for algo in ["logistic regression"]:
-       X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS_log_all.train", n_features=350)
+   for algo in ["logistic regression", "linear_svm", "decision_tree", "ada boost", "bagging logistic", "bagging_svm", "neural_network"]:
+   # for algo in ["logistic regression"]:
+       X,Y = utils.get_data_from_svmlight("../scala/output/withoutUPDRS.train", n_features=350)
        print 
        print "Without UPDRS"
        print "Classifier:", algo, "__________"
@@ -132,7 +132,7 @@ def main():
 #        print "Average Precision Score in KFold CV: "+str(precision_k)
 #        print "Average Recall Score in KFold CV: "+str(recall_k)
 
-       X,Y = utils.get_data_from_svmlight("../scala/output/withUPDRS_log_all.train", n_features=350)
+       X,Y = utils.get_data_from_svmlight("../scala/output/withUPDRS.train", n_features=350)
        print "With UPDRS"
        print "Classifier:", algo, "__________"
        acc_k,auc_k, precision_k,recall_k = get_acc_auc_kfold(X,Y,algo)
