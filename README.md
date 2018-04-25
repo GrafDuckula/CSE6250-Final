@@ -28,4 +28,6 @@ Output:
 Terminal console will output evaluation results (5-fold cross validation) averaged in the order of:
 `[accuracy, auc, sensitivity, specificity]`
 
-
+## Selecting features
+Feature description is written within the comments of `main.scala`
+To unselect or select features, comment or uncomment the feature section
