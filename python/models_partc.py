@@ -114,16 +114,16 @@ def classification_metrics(Y_pred, Y_true):
 
 #input: Name of classifier, predicted labels, actual labels
 def display_metrics(classifierName,Y_pred,Y_true):
-	print "______________________________________________"
-	print "Classifier: "+classifierName
+	print ("______________________________________________")
+	print ("Classifier: "+classifierName)
 	acc, auc_, precision, recall, f1score = classification_metrics(Y_pred,Y_true)
-	print "Accuracy: "+str(acc)
-	print "AUC: "+str(auc_)
-	print "Precision: "+str(precision)
-	print "Recall: "+str(recall)
-	print "F1-score: "+str(f1score)
-	print "______________________________________________"
-	print ""
+	print ("Accuracy: "+str(acc))
+	print ("AUC: "+str(auc_))
+	print ("Precision: "+str(precision))
+	print ("Recall: "+str(recall))
+	print ("F1-score: "+str(f1score))
+	print ("______________________________________________")
+	print ("")
 
 def main():
 	X_train, Y_train = utils.get_data_from_svmlight("../deliverables/features_svmlight.train")

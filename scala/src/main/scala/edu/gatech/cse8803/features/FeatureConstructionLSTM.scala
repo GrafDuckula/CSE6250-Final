@@ -565,15 +565,19 @@ object FeatureConstructionLSTM {
 
     // Generate training data for LSTM
     val featureID = featureNorm.map(s=>s._1._3).distinct().collect().sorted.zipWithIndex.toMap //(feature name -> feature ID)
+//    val timeID = Map(("SC", 0), ("BL", 0),
+//      ("V01", 3), ("V02", 6), ("V03", 9), ("V04", 12), ("V05", 18),
+//      ("V06", 24), ("V07", 30), ("V08", 36), ("V09", 42), ("V10", 48),
+//      ("V11", 54), ("V12", 60), ("V13", 72), ("V14", 84), ("V15", 96))
     val timeID = Map(("SC", 0), ("BL", 0),
-      ("V01", 3), ("V02", 6), ("V03", 9), ("V04", 12), ("V05", 18),
-      ("V06", 24), ("V07", 30), ("V08", 36), ("V09", 42), ("V10", 48),
-      ("V11", 54), ("V12", 60), ("V13", 72), ("V14", 84), ("V15", 96))
+          ("V01", 1), ("V02", 2), ("V03", 3), ("V04", 4), ("V05", 5),
+          ("V06", 6), ("V07", 7), ("V08", 8), ("V09", 9), ("V10", 10),
+          ("V11", 11), ("V12", 12), ("V13", 13), ("V14", 14), ("V15", 15))
 
     import scala.collection.immutable.ListMap
     println("Feature Map")
     ListMap(featureID.toSeq.sortBy(_._2):_*).foreach(println)
-
+    println(ListMap(featureID.toSeq.sortBy(_._2):_*).size)
     println("Generating training data for LSTM")
 
     import java.io._
@@ -599,12 +603,10 @@ object FeatureConstructionLSTM {
       pw.printf(patientFeature._1)
       for (feat <- patientFeature._2.sortBy(s=> (s._1, s._2))){
         pw.print(" ")
-        pw.print("(")
         pw.print(feat._1)
         pw.print(",")
         pw.print(feat._2)
-        pw.print(")")
-        pw.print(":")
+        pw.print(",")
         pw.print(feat._3)
       }
       pw.printf("\n")

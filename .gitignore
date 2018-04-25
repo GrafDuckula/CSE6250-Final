@@ -11,3 +11,4 @@ python/ppmi.*
 python/cifar-10-batches-py/
 python/target/
 python/urban.*
+deep-learning-packages/*

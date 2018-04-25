@@ -262,11 +262,11 @@ object Main {
 
 
     /** Features selected base on literature */
-/*    val bioChemFeatures = Source.fromFile("data/All_for_filter.txt").getLines().map(_.toLowerCase).toSet[String]
-
-    val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString, s(4).toString.toLowerCase(), s(5).toString.toLowerCase(), s(6), s(7).toString)).
-      filter(s=>bioChemFeatures.contains(s.testName)).
-      filter(s=>allPatientsID.contains(s.patientID))*/
+//    val bioChemFeatures = Source.fromFile("data/All_for_filter.txt").getLines().map(_.toLowerCase).toSet[String]
+//
+//    val bioChemRDD = bioChemFilterd.map(s=>BIOCHEM(s(0).toString,s(3).toString, s(4).toString.toLowerCase(), s(5).toString.toLowerCase(), s(6), s(7).toString)).
+//      filter(s=>bioChemFeatures.contains(s.testName)).
+//      filter(s=>allPatientsID.contains(s.patientID))
 
 
 
