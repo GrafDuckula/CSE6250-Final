@@ -12,3 +12,7 @@ python/cifar-10-batches-py/
 python/target/
 python/urban.*
 deep-learning-packages/*
+*.pyc
+.vscode-upload.json
+__pycache__
+.DS_Store
