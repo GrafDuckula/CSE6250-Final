@@ -114,13 +114,11 @@ object Main {
 //    val rawFeaturesWithoutUPDRS = FeatureConstruction.construct(sc, featureTuplesWithoutUPDRS, phenotypeLabel)
 
 //    val rawDenseFeaturesWithUPRDS = FeatureConstruction.constructDense(sc, featureTuplesWithUPDRS, phenotypeLabel)
-
 //    FeatureConstruction.saveDenseFeatures(sc, rawDenseFeaturesWithUPRDS, phenotypeLabel, 1)
-
-
-//
-    // FeatureConstruction.saveFeatures(sc, featureTuplesWithUPDRS, phenotypeLabel, 1) // withUPDRS == 1
-    // FeatureConstruction.saveFeatures(sc, featureTuplesWithoutUPDRS, phenotypeLabel, 0)  // withoutUPDRS == 0
+    
+    // for SKlearn
+    FeatureConstruction.saveFeatures(sc, featureTuplesWithUPDRS, phenotypeLabel, 1) // withUPDRS == 1
+    FeatureConstruction.saveFeatures(sc, featureTuplesWithoutUPDRS, phenotypeLabel, 0)  // withoutUPDRS == 0
 
     // for LSTM
     FeatureConstructionLSTM.saveFeatures(sc, featureTuplesWithUPDRSForLSTM, phenotypeLabel, 1) // withUPDRS == 1
